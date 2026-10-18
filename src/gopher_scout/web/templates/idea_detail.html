@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, badge, category, ring, meter, timeline, empty, confirm_form %}
+{% from "_macros.html" import icon, badge, category, ring, meter, timeline, empty, confirm_form, critique_spec %}
 {% block title %}#{{ idea.id }} {{ idea.title }} · gopher-scout{% endblock %}
 {% block content %}
 {% set impl = idea.latest_implementation %}
@@ -187,8 +187,17 @@ gh pr create --repo {{ idea.project.full_name }} --head {{ impl.branch }}</pre>
       <p class="prose small" style="margin-top:.8rem">{{ idea.critic_reasoning }}</p>
       {% if idea.critic_suggestions %}<h3>Suggestions</h3><p class="prose small">{{ idea.critic_suggestions }}</p>{% endif %}
       {% if idea.duplicate_urls %}<h3>Possible duplicates</h3><ul class="clean small">{% for u in idea.duplicate_urls %}<li><a href="{{ u }}" target="_blank" rel="noopener">{{ u }}</a></li>{% endfor %}</ul>{% endif %}
+      {% elif idea.status == S.PROPOSED %}
+      {% set busy_c = critiquing(idea.id, idea.project_id) %}
+      {{ empty('shield', 'Critiquing…' if busy_c else 'Not critiqued yet', 'This page refreshes when the Critic is done.' if busy_c else 'The Critic verifies the evidence, checks GitHub for duplicates and scores the idea.') }}
+      <div class="actions" style="justify-content:center">
+        <form class="inline" method="post" action="/ideas/{{ idea.id }}/critique" data-confirm='{{ critique_spec(idea) }}'>
+          <input type="hidden" name="next" value="/ideas/{{ idea.id }}">
+          <button class="primary" {{ 'disabled' if busy_c }}>{{ icon('shield', 'sm') }}{{ 'Critiquing…' if busy_c else 'Critique this idea' }}</button>
+        </form>
+      </div>
       {% else %}
-      {{ empty('shield', 'Not critiqued yet', 'Run Critique from the dashboard to verify and score this idea.') }}
+      {{ empty('shield', 'No critique recorded') }}
       {% endif %}
     </div>
 

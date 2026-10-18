@@ -24,13 +24,14 @@ HERE = Path(__file__).parent
 
 # Board columns: (title, statuses shown in it)
 BOARD: list[tuple[str, tuple[IdeaStatus, ...]]] = [
+    ("Needs critique", (IdeaStatus.PROPOSED,)),
     ("Awaiting your review", (IdeaStatus.AWAITING_REVIEW,)),
     ("Approved", (IdeaStatus.APPROVED,)),
     ("In progress", (IdeaStatus.IN_PROGRESS, IdeaStatus.NEEDS_ATTENTION)),
     ("Ready for PR", (IdeaStatus.READY_FOR_PR,)),
     ("Upstream", (IdeaStatus.PR_OPENED, IdeaStatus.MERGED, IdeaStatus.CLOSED)),
     ("Parked", (IdeaStatus.DEFERRED, IdeaStatus.REJECTED)),
-    ("Filtered by Critic", (IdeaStatus.PROPOSED, IdeaStatus.CRITIC_REJECTED)),
+    ("Rejected by Critic", (IdeaStatus.CRITIC_REJECTED,)),
 ]
 
 
@@ -75,6 +76,20 @@ def create_app() -> FastAPI:
             return {"awaiting": len(repo.list_ideas(s, [IdeaStatus.AWAITING_REVIEW]))}
 
     templates.env.globals["nav_counts"] = nav_counts
+
+    def critiquing(idea_id: int, project_id: int) -> bool:
+        """Is a critique job running that covers this idea?"""
+        return (
+            jobs.busy("stage:critique")
+            or jobs.busy(f"critique:project:{project_id}")
+            or jobs.busy(f"critique:idea:{idea_id}")
+        )
+
+    templates.env.globals["critiquing"] = critiquing
+
+    def safe_next(url: str, fallback: str) -> str:
+        # Only same-site paths, never an absolute URL from the form.
+        return url if url.startswith("/") and not url.startswith("//") else fallback
     # Cache-bust the stylesheet whenever it changes.
     templates.env.globals["css_version"] = int((HERE / "static" / "style.css").stat().st_mtime)
 
@@ -184,6 +199,38 @@ def create_app() -> FastAPI:
         if not jobs.busy(key):
             jobs.submit(f"Implement #{idea_id}: {title}", key, lambda: pipeline.implement(idea_id))
         return back("/jobs")
+
+    @app.post("/ideas/{idea_id}/critique")
+    async def critique_idea(idea_id: int, next: str = Form("")) -> RedirectResponse:
+        with session_scope() as s:
+            idea = repo.get_idea(s, idea_id)
+            if idea is None:
+                raise HTTPException(404)
+            project_id, title = idea.project_id, idea.title
+        if not critiquing(idea_id, project_id):
+            jobs.submit(
+                f"Critique #{idea_id}: {title}",
+                f"critique:idea:{idea_id}",
+                lambda: pipeline.critique([idea_id]),
+            )
+        return back(safe_next(next, f"/ideas/{idea_id}"))
+
+    @app.post("/projects/{project_id}/critique")
+    async def critique_project(project_id: int, next: str = Form("")) -> RedirectResponse:
+        with session_scope() as s:
+            project = repo.get_project(s, project_id)
+            if project is None:
+                raise HTTPException(404)
+            name = project.full_name
+            ids = [
+                i.id
+                for i in project.ideas
+                if i.status == IdeaStatus.PROPOSED and not jobs.busy(f"critique:idea:{i.id}")
+            ]
+        key = f"critique:project:{project_id}"
+        if ids and not jobs.busy(key) and not jobs.busy("stage:critique"):
+            jobs.submit(f"Critique {len(ids)} ideas in {name}", key, lambda: pipeline.critique(ids))
+        return back(safe_next(next, f"/projects/{project_id}"))
 
     @app.post("/actions/{stage}")
     async def run_stage(stage: str, project_id: int | None = Form(None)) -> RedirectResponse:

@@ -1,15 +1,16 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, idea_card %}
+{% from "_macros.html" import icon, idea_card, confirm_form %}
 {% block title %}Ideas · gopher-scout{% endblock %}
 {% block content %}
 {% set COLUMN_META = {
+  'Needs critique': ('c-new', 'Fresh from the Analyst. The Critic verifies and scores them.'),
   'Awaiting your review': ('c-review', 'Your move: approve, defer or reject.'),
   'Approved': ('c-approved', 'Start an implementation from the idea page.'),
   'In progress': ('c-progress', 'Being built, or needs your attention.'),
   'Ready for PR': ('c-ready', 'Committed locally. Push it yourself.'),
   'Upstream': ('c-upstream', 'PR opened, merged or closed.'),
   'Parked': ('c-parked', 'Deferred or rejected by you.'),
-  'Filtered by Critic': ('c-filtered', 'Unscored, or not strong enough. You can overrule.'),
+  'Rejected by Critic': ('c-filtered', 'Not strong enough after verification. You can overrule.'),
 } %}
 <div class="page-head">
   <div>
@@ -34,7 +35,15 @@
   <section class="column {{ meta[0] }}" aria-label="{{ title }}">
     <div class="column-head"><span class="dot"></span>{{ title }}<span class="n">{{ items | length }}</span></div>
     <p class="hint">{{ meta[1] }}</p>
-    {% for idea in items %}{{ idea_card(idea, show_project=not project_filter) }}{% else %}<div class="empty compact">Nothing here yet</div>{% endfor %}
+    {% if meta[0] == 'c-new' and items | length > 1 and not project_filter %}
+    {% set all_busy = jobs.busy('stage:critique') %}
+    <div class="column-action">{{ confirm_form('/actions/critique', 'Critiquing all…' if all_busy else 'Critique all ' ~ items | length, {
+      'title': 'Critique all ' ~ items | length ~ ' new ideas?', 'icon': 'shield', 'cost': 'ai', 'cta': 'Start critique',
+      'body': 'Claude checks every claim against the code and GitHub, then scores each idea. Strong ones move to your review queue.',
+      'facts': [['lock', 'Read-only — nothing in any repository changes'], ['clock', 'About 1–3 minutes per idea'],
+                ['coins', 'Spends Claude credits — capped at $' ~ '%.2f' | format(budget) ~ ' per idea']]}, 'sm', all_busy, icon_name='shield') }}</div>
+    {% endif %}
+    {% for idea in items %}{{ idea_card(idea, show_project=not project_filter, actions=True, next_url=request.url.path ~ ('?' ~ request.url.query if request.url.query else '')) }}{% else %}<div class="empty compact">Nothing here yet</div>{% endfor %}
   </section>
   {% endfor %}
 </div>

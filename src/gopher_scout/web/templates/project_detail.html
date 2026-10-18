@@ -78,9 +78,26 @@
 <div class="grid two">
   <div>
     <div class="card">
-      <div class="card-head"><h2>{{ icon('bulb') }} Ideas</h2>{% if project.ideas %}<a class="small" href="/ideas?project={{ project.id }}">On the board →</a>{% endif %}</div>
+      {% set new_ideas = project.ideas | selectattr('status', 'equalto', 'proposed') | list %}
+      {% set project_busy = jobs.busy('critique:project:' ~ project.id) or jobs.busy('stage:critique') %}
+      <div class="card-head">
+        <h2>{{ icon('bulb') }} Ideas</h2>
+        <div class="actions">
+          {% if new_ideas | length > 1 %}
+          {{ confirm_form('/projects/' ~ project.id ~ '/critique', 'Critiquing…' if project_busy else 'Critique all ' ~ new_ideas | length, {
+            'title': 'Critique all ' ~ new_ideas | length ~ ' new ideas?', 'icon': 'shield', 'cost': 'ai', 'cta': 'Start critique',
+            'body': 'Claude checks every claim against ' ~ project.full_name ~ ' and GitHub, then scores each idea. Strong ones move to your review queue.',
+            'facts': [['check', 'Verifies the cited code really behaves as described'], ['search', 'Looks for duplicate issues and pull requests'],
+                      ['lock', 'Read-only — nothing in the repository changes'], ['clock', 'About 1–3 minutes per idea'],
+                      ['coins', 'Spends Claude credits — capped at $' ~ '%.2f' | format(budget) ~ ' per idea']]},
+            'sm', project_busy, icon_name='shield', next_url=request.url.path) }}
+          {% endif %}
+          {% if project.ideas %}<a class="small" href="/ideas?project={{ project.id }}">On the board →</a>{% endif %}
+        </div>
+      </div>
+      {% if new_ideas %}<p class="small muted" style="margin-top:-.3rem">{{ icon('shield', 'sm') }} {{ new_ideas | length }} new idea{{ 's' if new_ideas | length != 1 }} waiting for the Critic. Critique one at a time, or all at once.</p>{% endif %}
       {% if project.ideas %}
-      <div class="idea-list">{% for idea in project.ideas %}{{ idea_card(idea, show_project=False) }}{% endfor %}</div>
+      <div class="idea-list">{% for idea in project.ideas %}{{ idea_card(idea, show_project=False, actions=True, next_url=request.url.path) }}{% endfor %}</div>
       {% elif project.status == P.PROFILED %}
       {{ empty('sparkles', 'Ready for analysis', 'Click Analyse to have Claude propose improvements.') }}
       {% else %}

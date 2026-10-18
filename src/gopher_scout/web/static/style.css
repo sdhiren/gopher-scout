@@ -319,9 +319,23 @@ main { padding: 2rem clamp(1rem, 3vw, 2.6rem) 3rem; max-width: 1360px; width: 10
 .column.c-approved { --col: var(--accent); }
 .column.c-progress { --col: var(--warn); }
 .column.c-ready { --col: var(--ok); }
-.column.c-upstream { --col: var(--violet); }
+.column.c-upstream { --col: var(--accent-strong); }
 .column.c-parked { --col: var(--faint); }
 .column.c-filtered { --col: var(--bad); }
+
+/* idea card with an action (e.g. Critique) layered over its bottom-right corner */
+.idea-item { position: relative; margin-bottom: .6rem; }
+.idea-item .idea-card { margin-bottom: 0; padding-bottom: 3.1rem; }
+.idea-item .idea-action { position: absolute; right: .8rem; bottom: .75rem; z-index: 1; }
+.idea-action button { background: var(--violet-soft); border-color: color-mix(in srgb, var(--violet) 35%, transparent); color: var(--violet); }
+.idea-action button:hover { background: var(--violet); border-color: var(--violet); color: var(--on-accent, #fff); }
+.idea-action button.running { background: var(--surface-2); color: var(--muted); border-color: var(--border); }
+.idea-action button.running .icon { animation: spin 1.4s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.idea-list .idea-item:last-child { margin-bottom: 0; }
+.column.c-new { --col: var(--violet); }
+.column .column-action { margin: -.3rem .25rem .8rem; }
+.column .column-action button { width: 100%; justify-content: center; }
 
 /* ------------------------------------------------------------------ empty states */
 .empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: .35rem; padding: 1.5rem .8rem; color: var(--muted); font-size: .88rem; }

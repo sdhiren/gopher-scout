@@ -88,3 +88,55 @@ def test_stage_buttons_run_jobs_and_ignore_double_clicks(
             time.sleep(0.05)
     assert calls == ["discover"]
     assert "10 matched" in client.get("/jobs").text
+
+
+def test_new_ideas_show_in_needs_critique_and_can_be_critiqued(
+    settings: Settings, seeded: tuple[int, int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.conftest import make_proposal
+
+    project_id, _ = seeded
+    with session_scope() as s:
+        project = repo.get_project(s, project_id)
+        assert project is not None
+        new_ids = [
+            repo.add_idea(s, project, None, make_proposal(title=f"New idea {n}")).id for n in (1, 2)
+        ]
+
+    critiqued: list[list[int] | None] = []
+
+    async def fake_critique(self: Pipeline, idea_ids: list[int] | None = None) -> str:
+        critiqued.append(list(idea_ids) if idea_ids else None)
+        return "ok"
+
+    monkeypatch.setattr(Pipeline, "critique", fake_critique)
+    with TestClient(create_app()) as client:
+        board = client.get("/ideas").text
+        needs = board.split('aria-label="Needs critique"')[1].split("</section>")[0]
+        assert "New idea 1" in needs and "New idea 2" in needs
+        assert "Critique all 2" in needs
+        assert f'action="/ideas/{new_ids[0]}/critique"' in needs
+
+        page = client.get(f"/projects/{project_id}").text
+        assert "Critique all 2" in page
+        assert page.count('/critique" data-confirm=') >= 3  # one per new idea + "all"
+
+        resp = client.post(
+            f"/ideas/{new_ids[0]}/critique",
+            data={"next": f"/projects/{project_id}"},
+            follow_redirects=False,
+        )
+        assert resp.headers["location"] == f"/projects/{project_id}"
+        evil = client.post(
+            f"/ideas/{new_ids[1]}/critique", data={"next": "https://evil.example"},
+            follow_redirects=False,
+        )  # fmt: skip
+        assert evil.headers["location"] == f"/ideas/{new_ids[1]}"  # never an off-site redirect
+
+        client.post(f"/projects/{project_id}/critique", follow_redirects=False)
+        deadline = time.monotonic() + 5
+        while len(critiqued) < 3:
+            assert time.monotonic() < deadline
+            time.sleep(0.05)
+    assert [new_ids[0]] in critiqued and [new_ids[1]] in critiqued
+    assert sorted(new_ids) in [sorted(c or []) for c in critiqued]  # the project-wide run

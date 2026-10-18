@@ -94,13 +94,26 @@ class Pipeline:
         return report
 
     async def critique(self, idea_ids: Sequence[int] | None = None) -> StageReport:
-        if not idea_ids:
-            with session_scope() as s:
-                idea_ids = [i.id for i in repo.list_ideas(s, [IdeaStatus.PROPOSED])]
+        """Critique the given ideas (default: every proposed idea). Only `proposed` ideas
+        are critiqued; anything else was already decided and is skipped."""
+        with session_scope() as s:
+            proposed = {i.id for i in repo.list_ideas(s, [IdeaStatus.PROPOSED])}
+        if idea_ids:
+            skipped = [i for i in idea_ids if i not in proposed]
+            if skipped:
+                log.info("skipping ideas that are not awaiting critique: %s", skipped)
+            idea_ids = [i for i in idea_ids if i in proposed]
+        else:
+            idea_ids = sorted(proposed)
         report = StageReport()
         agent = CriticAgent(self.settings)
         async with self._github() as gh:
             for iid in idea_ids:
+                # Another job may have critiqued it since this one started.
+                with session_scope() as s:
+                    current = repo.get_idea(s, iid)
+                    if current is None or current.status != IdeaStatus.PROPOSED:
+                        continue
                 try:
                     result = await agent.run(iid, gh)
                     report.succeeded.append(f"#{iid} {result.verdict} ({result.overall_score})")

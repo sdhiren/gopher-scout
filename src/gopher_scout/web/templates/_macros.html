@@ -69,8 +69,24 @@
 <span class="avatar {{ cls }}" style="--h: {{ full_name | hue }}" aria-hidden="true">{{ full_name.split('/')[-1][:1] | upper }}</span>
 {%- endmacro %}
 
-{% macro idea_card(idea, show_project=True) -%}
-<a class="idea-card cat-{{ idea.category }}" href="/ideas/{{ idea.id }}">
+{% macro critique_spec(idea) -%}
+{{ {
+  'title': 'Critique this idea?', 'icon': 'shield', 'cost': 'ai', 'cta': 'Start critique',
+  'body': '“' ~ idea.title ~ '”',
+  'facts': [
+    ['check', 'Verifies the cited code really behaves as described'],
+    ['search', 'Looks for duplicate issues and pull requests on GitHub'],
+    ['lock', 'Read-only — nothing in the repository changes'],
+    ['clock', 'Usually 1–3 minutes'],
+    ['coins', 'Spends Claude credits — capped at $' ~ '%.2f' | format(budget)],
+  ]} | tojson }}
+{%- endmacro %}
+
+{# An idea card. With actions=True, a new (proposed) idea also gets a Critique button. #}
+{% macro idea_card(idea, show_project=True, actions=False, next_url='') -%}
+{% set can_critique = actions and idea.status == 'proposed' %}
+{% if can_critique %}<div class="idea-item">{% endif %}
+<a class="idea-card cat-{{ idea.category }}{{ ' has-action' if can_critique }}" href="/ideas/{{ idea.id }}">
   <div class="row">
     <div class="body">
       {% if show_project %}<div class="proj">{{ icon('folder', 'sm') }}{{ idea.project.full_name }}</div>{% endif %}
@@ -81,9 +97,19 @@
         {{ badge(idea.status) }}
       </div>
     </div>
-    {{ ring(idea.overall_score) }}
+    {% if not can_critique %}{{ ring(idea.overall_score) }}{% endif %}
   </div>
 </a>
+{% if can_critique %}
+  {% set busy = critiquing(idea.id, idea.project_id) %}
+  <div class="idea-action">
+    <form class="inline" method="post" action="/ideas/{{ idea.id }}/critique" data-confirm='{{ critique_spec(idea) }}'>
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <button class="sm {{ 'running' if busy }}" {{ 'disabled' if busy }}>{{ icon('shield', 'sm') }}{{ 'Critiquing…' if busy else 'Critique' }}</button>
+    </form>
+  </div>
+</div>
+{% endif %}
 {%- endmacro %}
 
 {% macro meter(name, value) -%}
@@ -119,9 +145,10 @@
 
 {# A form whose submit first opens the styled confirmation dialog (see base.html).
    spec: {title, body, facts: [[icon, text], ...], cost: 'free'|'ai', cost_note, cta, icon} #}
-{% macro confirm_form(action, label, spec, cls='', disabled=False, project_id=None, icon_name=None) -%}
+{% macro confirm_form(action, label, spec, cls='', disabled=False, project_id=None, icon_name=None, next_url=None) -%}
 <form class="inline" method="post" action="{{ action }}" data-confirm='{{ spec | tojson }}'>
   {% if project_id %}<input type="hidden" name="project_id" value="{{ project_id }}">{% endif %}
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
   <button class="{{ cls }}" {{ 'disabled' if disabled }}>{% if icon_name %}{{ icon(icon_name) }}{% endif %}{{ label }}</button>
 </form>
 {%- endmacro %}

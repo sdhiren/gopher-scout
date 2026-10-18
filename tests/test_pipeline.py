@@ -195,3 +195,20 @@ async def test_scout_stores_projects(settings: Settings, monkeypatch: pytest.Mon
     with session_scope() as s:
         project = repo.get_project_by_name(s, "acme/tool")
         assert project is not None and project.license == "MIT" and project.selection_score > 0
+
+
+async def test_critique_skips_ideas_that_are_not_proposed(
+    settings: Settings, seeded: tuple[int, int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from gopher_scout.agents.critic import CriticAgent
+
+    _, idea_id = seeded  # already awaiting review
+    calls: list[int] = []
+
+    async def fake_run(self: CriticAgent, iid: int, gh: object) -> CritiqueResult:
+        calls.append(iid)
+        return critique(8, 9, 8)
+
+    monkeypatch.setattr(CriticAgent, "run", fake_run)
+    report = await Pipeline(settings).critique([idea_id])
+    assert calls == [] and report.succeeded == []

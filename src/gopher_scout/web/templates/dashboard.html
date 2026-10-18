@@ -20,9 +20,33 @@
 {% elif n_discovered %}{% set next = ('profile', 'Profile the top discovered projects', None) %}
 {% else %}{% set next = ('discover', 'Discover Go CLI projects on GitHub', None) %}{% endif %}
 
-{% set profile_msg = 'Profile the next 5 discovered projects?\n\nClones each repository into workspace/ and runs go vet, staticcheck and govulncheck, then checks its contribution policy.\n\nFree — no Claude calls. About 1–3 minutes per project.' %}
-{% set analyse_msg = 'Analyse up to 3 profiled projects with Claude?\n\nThe Analyst reads each codebase and proposes up to ' ~ max_ideas ~ ' improvement ideas per project.\n\nSpends Claude credits (capped at $' ~ '%.2f' | format(budget) ~ ' per project) and takes several minutes each.' %}
-{% set critique_msg = 'Run the Critic on ' ~ n_proposed ~ ' proposed idea(s)?\n\nIt verifies the evidence in the code, checks GitHub for duplicates and scores each idea. Only strong ideas reach your review queue.\n\nSpends Claude credits (capped at $' ~ '%.2f' | format(budget) ~ ' per idea).' %}
+{% set profile_spec = {
+  'title': 'Profile the next 5 projects?', 'icon': 'scan', 'cost': 'free', 'cta': 'Start profiling',
+  'body': 'Clones the top discovered repositories and gathers hard evidence for the Analyst. No AI is involved.',
+  'facts': [
+    ['folder', 'Clones each repository into workspace/ — pushing is disabled'],
+    ['scan', 'Runs go vet, staticcheck and govulncheck, and collects code metrics'],
+    ['shield', 'Skips repositories that restrict AI-assisted contributions'],
+    ['clock', 'About 1–3 minutes per project'],
+  ]} %}
+{% set analyse_spec = {
+  'title': 'Analyse up to 3 projects?', 'icon': 'sparkles', 'cost': 'ai', 'cta': 'Start analysis',
+  'body': 'Claude reads each codebase and its profile, then proposes evidence-backed improvement ideas.',
+  'facts': [
+    ['sparkles', 'Up to ' ~ max_ideas ~ ' ideas per project, strongest first'],
+    ['lock', 'Read-only — the Analyst cannot change any code'],
+    ['clock', 'Several minutes per project'],
+    ['coins', 'Spends Claude credits — capped at ' ~ '$' ~ '%.2f' | format(budget) ~ ' per project'],
+  ]} %}
+{% set critique_spec = {
+  'title': 'Critique ' ~ n_proposed ~ ' proposed idea' ~ ('s' if n_proposed != 1) ~ '?', 'icon': 'shield', 'cost': 'ai', 'cta': 'Start critique',
+  'body': 'Claude checks every claim against the code and GitHub, then scores each idea. Only strong ones reach your review queue.',
+  'facts': [
+    ['check', 'Verifies the cited code really behaves as described'],
+    ['search', 'Looks for duplicate issues and pull requests'],
+    ['lock', 'Read-only — nothing in the repository changes'],
+    ['coins', 'Spends Claude credits — capped at ' ~ '$' ~ '%.2f' | format(budget) ~ ' per idea'],
+  ]} %}
 
 <section class="hero">
   <div class="hero-top">
@@ -51,7 +75,7 @@
       <div class="big">{{ n_profiled_total }}<small>profiled</small></div>
       <div class="what">Clone, lint and check contribution rules</div>
       <div class="waiting {{ 'none' if not n_discovered }}">{{ n_discovered }} waiting</div>
-      <div class="stage-action">{{ confirm_form('/actions/profile', profile_msg, 'Profiling…' if busy_profile else 'Profile next 5', 'sm', busy_profile or not n_discovered, icon_name='play') }}</div>
+      <div class="stage-action">{{ confirm_form('/actions/profile', 'Profiling…' if busy_profile else 'Profile next 5', profile_spec, 'sm', busy_profile or not n_discovered, icon_name='play') }}</div>
     </div>
 
     {% set busy_analyse = jobs.busy('stage:analyse') %}
@@ -60,7 +84,7 @@
       <div class="big">{{ n_analysed }}<small>analysed</small></div>
       <div class="what">Read the code and propose improvements</div>
       <div class="waiting {{ 'none' if not n_profiled_waiting }}">{{ n_profiled_waiting }} waiting</div>
-      <div class="stage-action">{{ confirm_form('/actions/analyse', analyse_msg, 'Analysing…' if busy_analyse else 'Analyse next 3', 'sm', busy_analyse or not n_profiled_waiting, icon_name='play') }}</div>
+      <div class="stage-action">{{ confirm_form('/actions/analyse', 'Analysing…' if busy_analyse else 'Analyse next 3', analyse_spec, 'sm', busy_analyse or not n_profiled_waiting, icon_name='play') }}</div>
     </div>
 
     {% set busy_critique = jobs.busy('stage:critique') %}
@@ -69,7 +93,7 @@
       <div class="big">{{ n_ideas - n_proposed }}<small>vetted</small></div>
       <div class="what">Verify evidence, de-duplicate, score</div>
       <div class="waiting {{ 'none' if not n_proposed }}">{{ n_proposed }} waiting</div>
-      <div class="stage-action">{{ confirm_form('/actions/critique', critique_msg, 'Critiquing…' if busy_critique else 'Critique', 'sm', busy_critique or not n_proposed, icon_name='play') }}</div>
+      <div class="stage-action">{{ confirm_form('/actions/critique', 'Critiquing…' if busy_critique else 'Critique', critique_spec, 'sm', busy_critique or not n_proposed, icon_name='play') }}</div>
     </div>
 
     <div class="stage you {{ 'hot' if next[0] == 'review' }}" id="stage-review">

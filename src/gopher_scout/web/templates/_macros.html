@@ -117,8 +117,10 @@
 {% endif %}
 {%- endmacro %}
 
-{% macro confirm_form(action, message, label, cls='', disabled=False, project_id=None, icon_name=None) -%}
-<form class="inline" method="post" action="{{ action }}" onsubmit='return confirm({{ message | tojson }})'>
+{# A form whose submit first opens the styled confirmation dialog (see base.html).
+   spec: {title, body, facts: [[icon, text], ...], cost: 'free'|'ai', cost_note, cta, icon} #}
+{% macro confirm_form(action, label, spec, cls='', disabled=False, project_id=None, icon_name=None) -%}
+<form class="inline" method="post" action="{{ action }}" data-confirm='{{ spec | tojson }}'>
   {% if project_id %}<input type="hidden" name="project_id" value="{{ project_id }}">{% endif %}
   <button class="{{ cls }}" {{ 'disabled' if disabled }}>{% if icon_name %}{{ icon(icon_name) }}{% endif %}{{ label }}</button>
 </form>

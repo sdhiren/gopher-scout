@@ -460,6 +460,47 @@ button.sm, .button.sm { padding: .4rem .7rem; font-size: .82rem; border-radius: 
 .check-row .ok { color: var(--ok); }
 .check-row .bad { color: var(--bad); }
 
+/* ------------------------------------------------------------------ confirmation dialog */
+dialog.modal { border: 0; padding: 0; background: transparent; width: min(500px, calc(100vw - 32px)); max-width: none; color: var(--text); overflow: visible; }
+dialog.modal::backdrop { background: rgba(8, 14, 20, .5); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+dialog.modal[open] .modal-card { animation: modal-pop .18s cubic-bezier(.2, .9, .3, 1.2); }
+dialog.modal[open]::backdrop { animation: fade .18s ease-out; }
+@keyframes modal-pop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+@keyframes fade { from { opacity: 0; } }
+.modal-card {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(420px 160px at 100% 0%, var(--accent-soft), transparent 70%),
+    var(--surface);
+  border: 1px solid var(--border); border-radius: 20px;
+  box-shadow: 0 40px 90px -24px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .03);
+  padding: 1.5rem 1.5rem 1.25rem;
+}
+.modal-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--accent), var(--coral)); }
+.modal.ai .modal-card { background: radial-gradient(420px 160px at 100% 0%, var(--violet-soft), transparent 70%), var(--surface); }
+.modal.ai .modal-card::before { background: linear-gradient(90deg, var(--violet), var(--coral)); }
+.modal-head { display: flex; gap: .95rem; align-items: center; margin-bottom: .85rem; }
+.modal-icon { width: 50px; height: 50px; border-radius: 15px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent); }
+.modal-icon .icon { width: 26px; height: 26px; }
+.modal.ai .modal-icon { background: var(--violet-soft); color: var(--violet); }
+.cost-tag { display: inline-flex; font-size: .66rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; padding: .14rem .5rem; border-radius: 6px; background: var(--ok-soft); color: var(--ok); margin-bottom: .3rem; }
+.modal.ai .cost-tag { background: var(--violet-soft); color: var(--violet); }
+.modal-card h2 { display: block; margin: 0; font-size: 1.3rem; line-height: 1.25; }
+.modal-body { color: var(--muted); margin-bottom: 1rem; }
+.modal-facts { list-style: none; padding: 0; margin: 0 0 1.3rem; display: grid; gap: .45rem; }
+.modal-facts li { display: flex; gap: .65rem; align-items: flex-start; padding: .6rem .8rem; border-radius: 11px; background: var(--surface-2); font-size: .89rem; line-height: 1.45; }
+.modal-facts li .icon { color: var(--accent); margin-top: .1rem; }
+.modal.ai .modal-facts li .icon { color: var(--violet); }
+.modal-facts li.cost { background: var(--warn-soft); color: var(--warn); font-weight: 600; }
+.modal-facts li.cost .icon, .modal.ai .modal-facts li.cost .icon { color: var(--warn); }
+.modal-actions { display: flex; justify-content: flex-end; gap: .55rem; }
+.modal-actions button { min-width: 110px; justify-content: center; }
+button.ghost { background: transparent; border-color: var(--border-strong); color: var(--muted); }
+button.ghost:hover { color: var(--text); background: var(--surface-2); }
+.modal.ai .modal-actions button.primary { background: var(--violet); border-color: var(--violet); box-shadow: 0 8px 18px -10px var(--violet); }
+.modal.ai .modal-actions button.primary:hover { filter: brightness(1.08); }
+@media (max-width: 520px) { .modal-actions button { flex: 1; min-width: 0; } }
+
 /* ------------------------------------------------------------------ responsive shell */
 @media (max-width: 860px) {
   .shell { grid-template-columns: minmax(0, 1fr); }

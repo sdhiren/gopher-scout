@@ -63,6 +63,74 @@
     sync();
   })();
 </script>
+{# Styled confirmation dialog used by every form with data-confirm (see confirm_form macro). #}
+<dialog id="gs-confirm" class="modal" aria-labelledby="gs-confirm-title" aria-describedby="gs-confirm-body">
+  <form method="dialog" class="modal-card">
+    <div class="modal-head">
+      <span class="modal-icon" data-slot="icon"></span>
+      <div>
+        <span class="cost-tag" data-slot="cost"></span>
+        <h2 id="gs-confirm-title" data-slot="title"></h2>
+      </div>
+    </div>
+    <p class="modal-body" id="gs-confirm-body" data-slot="body"></p>
+    <ul class="modal-facts" data-slot="facts"></ul>
+    <div class="modal-actions">
+      <button value="cancel" class="ghost" data-slot="cancel">Cancel</button>
+      <button value="ok" class="primary" data-slot="cta">Continue</button>
+    </div>
+  </form>
+</dialog>
+<div hidden id="gs-icons">{% for n in ['clock', 'coins', 'lock', 'folder', 'sparkles', 'scan', 'branch', 'shield', 'search', 'play', 'alert', 'check'] %}<template data-icon="{{ n }}">{{ icon(n) }}</template>{% endfor %}</div>
+<script>
+  (() => {
+    const dlg = document.getElementById("gs-confirm");
+    const slot = name => dlg.querySelector(`[data-slot="${name}"]`);
+    const iconHtml = name => document.querySelector(`#gs-icons template[data-icon="${name}"]`)?.innerHTML ?? "";
+    let pending = null;
+
+    document.addEventListener("submit", event => {
+      const form = event.target;
+      if (!form.matches("form[data-confirm]")) return;
+      let spec;
+      try { spec = JSON.parse(form.dataset.confirm); } catch { return; }  // malformed: submit normally
+      event.preventDefault();
+      pending = form;
+      const ai = spec.cost === "ai";
+      dlg.classList.toggle("ai", ai);
+      slot("icon").innerHTML = iconHtml(spec.icon || "play");
+      slot("cost").textContent = ai ? "Uses Claude · spends credits" : "Free · no AI";
+      slot("title").textContent = spec.title;
+      slot("body").textContent = spec.body || "";
+      const facts = slot("facts");
+      facts.replaceChildren(...(spec.facts || []).map(([ic, text]) => {
+        const li = document.createElement("li");
+        if (ic === "coins") li.className = "cost";
+        li.innerHTML = iconHtml(ic);
+        const span = document.createElement("span");
+        span.textContent = text;
+        li.append(span);
+        return li;
+      }));
+      slot("cta").innerHTML = iconHtml("play");
+      slot("cta").append(spec.cta || "Continue");
+      dlg.showModal();
+      // Paid actions default to Cancel so a stray Enter never spends credits.
+      (ai ? slot("cancel") : slot("cta")).focus();
+    }, true);
+
+    dlg.addEventListener("close", () => {
+      if (dlg.returnValue === "ok" && pending) {
+        pending.querySelector("button")?.setAttribute("disabled", "");
+        pending.submit();  // programmatic submit does not re-trigger the handler
+      }
+      pending = null;
+      dlg.returnValue = "";
+    });
+    // Click on the backdrop closes the dialog.
+    dlg.addEventListener("click", event => { if (event.target === dlg) dlg.close("cancel"); });
+  })();
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

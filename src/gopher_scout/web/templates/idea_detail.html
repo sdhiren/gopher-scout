@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, badge, category, ring, meter, timeline, empty %}
+{% from "_macros.html" import icon, badge, category, ring, meter, timeline, empty, confirm_form %}
 {% block title %}#{{ idea.id }} {{ idea.title }} · gopher-scout{% endblock %}
 {% block content %}
 {% set impl = idea.latest_implementation %}
@@ -103,9 +103,17 @@
     <div class="card">
       <h2>{{ icon('branch') }} Implementation</h2>
       {% if implementable %}
-      <form method="post" action="/ideas/{{ idea.id }}/implement" onsubmit='return confirm({{ ("Implement “" ~ idea.title ~ "”?\n\nCreates a local branch in " ~ idea.project.full_name ~ ", lets Claude implement the change with tests, then builds, vets and tests it in a sandbox. Nothing is pushed.\n\nSpends Claude credits (capped at $" ~ "%.2f" | format(budget) ~ " per run, up to 3 attempts).") | tojson }})'>
-        <button class="primary" {{ 'disabled' if busy }}>{{ icon('play', 'sm') }}{{ 'Re-implement' if impl else 'Start implementation' }}</button>
-      </form>
+      {% set implement_spec = {
+        'title': 'Implement this idea?', 'icon': 'branch', 'cost': 'ai', 'cta': 'Start implementation',
+        'body': '“' ~ idea.title ~ '”',
+        'facts': [
+          ['branch', 'Creates a fresh local branch in ' ~ idea.project.full_name],
+          ['sparkles', 'Claude implements the change with tests, following your notes'],
+          ['shield', 'Builds, vets and tests it in a sandbox, then reviews the diff — up to 3 attempts'],
+          ['lock', 'Nothing is pushed — you review, push and open the PR'],
+          ['coins', 'Spends Claude credits — capped at ' ~ '$' ~ '%.2f' | format(budget) ~ ' per run'],
+        ]} %}
+      {{ confirm_form('/ideas/' ~ idea.id ~ '/implement', 'Re-implement' if impl else 'Start implementation', implement_spec, 'primary', busy, icon_name='play') }}
       {% if busy %}<p class="small muted" style="margin:.5rem 0 0">A job is already running on this repository.</p>{% endif %}
       <p class="small muted" style="margin:.6rem 0 0">{{ icon('lock', 'sm') }} Local branch only — you review, push and open the PR.</p>
       {% endif %}

@@ -1,25 +1,104 @@
+{# ------------------------------------------------------------------ icons (24px stroke set) #}
+{% set ICONS = {
+  'dashboard': '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  'bulb': '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/>',
+  'folder': '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  'activity': '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  'search': '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  'scan': '<path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/>',
+  'sparkles': '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+  'shield': '<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  'user': '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  'branch': '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3-10.5 5.5"/>',
+  'external': '<path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
+  'star': '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+  'fork': '<circle cx="6" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="12" cy="19" r="2"/><path d="M6 7v2a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7M12 12v5"/>',
+  'issue': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5"/>',
+  'clock': '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  'check': '<path d="m5 12 5 5 9-10"/>',
+  'x': '<path d="M6 6l12 12M18 6 6 18"/>',
+  'sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  'moon': '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  'monitor': '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  'alert': '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  'code': '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>',
+  'target': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  'wrench': '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/>',
+  'trend': '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  'listcheck': '<path d="M10 6h11M10 12h11M10 18h11M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
+  'history': '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>',
+  'lock': '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  'arrow': '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  'play': '<path d="M7 4v16l13-8z"/>',
+  'coins': '<circle cx="9" cy="9" r="6"/><path d="M15.5 9.5a6 6 0 1 1-6 6"/>',
+  'percent': '<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+  'terminal': '<path d="m5 8 4 4-4 4M12 17h7"/>',
+  'inbox': '<path d="M3 13h5l2 3h4l2-3h5M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>',
+  'file': '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>',
+  'pr': '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7M18 15.5V9a2 2 0 0 0-2-2h-4M14 4l-3 3 3 3"/>',
+  'book': '<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/>',
+  'refresh': '<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5"/>',
+} %}
+
+{% macro icon(name, cls='') -%}
+<svg class="icon {{ cls }}" viewBox="0 0 24 24" aria-hidden="true">{{ ICONS[name] | safe }}</svg>
+{%- endmacro %}
+
+{% set CATEGORY_ICONS = {
+  'performance': 'trend', 'reliability': 'shield', 'security': 'lock', 'ux': 'terminal', 'api': 'code',
+  'testing': 'listcheck', 'observability': 'activity', 'maintainability': 'wrench', 'docs': 'book',
+} %}
+
+{% macro category(cat) -%}
+<span class="chip cat cat-{{ cat }}">{{ icon(CATEGORY_ICONS.get(cat|string, 'bulb')) }}{{ cat | label }}</span>
+{%- endmacro %}
+
 {% macro badge(value) -%}
 <span class="badge {{ value }}">{{ value | label }}</span>
 {%- endmacro %}
 
+{% macro ring(score, cls='') -%}
+{% if score is none %}
+<span class="ring none {{ cls }}" title="Not scored yet"><span>–</span></span>
+{% else %}
+<span class="ring {{ 'hi' if score >= 7 else ('mid' if score >= 5 else 'lo') }} {{ cls }}" style="--v: {{ score }}" title="Critic score {{ '%.1f' | format(score) }}/10"><span>{{ '%.1f' | format(score) }}</span></span>
+{% endif %}
+{%- endmacro %}
+
+{% macro avatar(full_name, cls='') -%}
+<span class="avatar {{ cls }}" style="--h: {{ full_name | hue }}" aria-hidden="true">{{ full_name.split('/')[-1][:1] | upper }}</span>
+{%- endmacro %}
+
 {% macro idea_card(idea, show_project=True) -%}
-<a class="idea-card" href="/ideas/{{ idea.id }}">
-  <div class="title">{{ idea.title }}</div>
-  <div class="meta">
-    {% if show_project %}<span>{{ idea.project.full_name }}</span>·{% endif %}
-    <span>{{ idea.category | label }}</span>·
-    <span>effort {{ idea.effort }}</span>
-    {% if idea.overall_score is not none %}·<span class="score">{{ '%.1f' | format(idea.overall_score) }}</span>{% endif %}
-    {{ badge(idea.status) }}
+<a class="idea-card cat-{{ idea.category }}" href="/ideas/{{ idea.id }}">
+  <div class="row">
+    <div class="body">
+      {% if show_project %}<div class="proj">{{ icon('folder', 'sm') }}{{ idea.project.full_name }}</div>{% endif %}
+      <div class="title">{{ idea.title }}</div>
+      <div class="chips">
+        {{ category(idea.category) }}
+        <span class="chip" title="Effort">{{ icon('clock') }}{{ idea.effort }}</span>
+        {{ badge(idea.status) }}
+      </div>
+    </div>
+    {{ ring(idea.overall_score) }}
   </div>
 </a>
 {%- endmacro %}
 
-{% macro score_bar(name, value) -%}
-<div class="score-bar">
+{% macro meter(name, value) -%}
+<div class="meter">
   <span class="name">{{ name }}</span>
   <span class="track"><span class="fill" style="width: {{ (value or 0) * 10 }}%"></span></span>
   <span class="val">{{ value if value is not none else '—' }}</span>
+</div>
+{%- endmacro %}
+
+{% macro empty(icon_name, title, text='') -%}
+<div class="empty">
+  <span class="empty-icon">{{ icon(icon_name) }}</span>
+  <strong>{{ title }}</strong>
+  {% if text %}<span>{{ text }}</span>{% endif %}
 </div>
 {%- endmacro %}
 
@@ -27,8 +106,20 @@
 {% if events %}
 <ul class="timeline">
   {% for e in events %}
-  <li><span class="muted">{{ e.created_at | ago }}</span> · <strong>{{ e.actor }}</strong> {{ e.action | label }}{% if e.detail %} — <span class="muted">{{ e.detail | truncate(160) }}</span>{% endif %}</li>
+  <li class="{{ 'you' if e.actor == 'you' else 'agent' }}">
+    <span class="when">{{ e.created_at | ago }}</span>
+    <span class="who">{{ 'You' if e.actor == 'you' else e.actor | capitalize }}</span> {{ e.action | label }}{% if e.detail %} — <span class="muted">{{ e.detail | truncate(150) }}</span>{% endif %}
+  </li>
   {% endfor %}
 </ul>
-{% else %}<div class="empty">No activity yet.</div>{% endif %}
+{% else %}
+{{ empty('history', 'No activity yet') }}
+{% endif %}
+{%- endmacro %}
+
+{% macro confirm_form(action, message, label, cls='', disabled=False, project_id=None, icon_name=None) -%}
+<form class="inline" method="post" action="{{ action }}" onsubmit='return confirm({{ message | tojson }})'>
+  {% if project_id %}<input type="hidden" name="project_id" value="{{ project_id }}">{% endif %}
+  <button class="{{ cls }}" {{ 'disabled' if disabled }}>{% if icon_name %}{{ icon(icon_name) }}{% endif %}{{ label }}</button>
+</form>
 {%- endmacro %}

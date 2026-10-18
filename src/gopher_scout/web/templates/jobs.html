@@ -1,23 +1,36 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge %}
+{% from "_macros.html" import icon, badge, empty %}
 {% block title %}Jobs · gopher-scout{% endblock %}
 {% block content %}
+{% set running = jobs.recent() | selectattr('running') | list %}
 <div class="page-head">
   <div>
-    <h1>Jobs</h1>
-    <p class="muted">Agent runs started from this UI since the server started. The page refreshes while something is running.</p>
+    <div class="eyebrow">{{ icon('activity', 'sm') }} Jobs</div>
+    <h1>What the agents are up to</h1>
+    <p class="lede">Runs started from this UI since the server started. Detailed logs stream to the terminal running <span class="mono">make serve</span>.{% if running %} This page refreshes every 15 seconds while something is running.{% endif %}</p>
   </div>
 </div>
-<div class="card table-wrap">
-  <table>
-    <thead><tr><th>Job</th><th>Status</th><th>Started</th><th>Result</th></tr></thead>
-    <tbody>
-    {% for j in jobs.recent() %}
-      <tr><td>{{ j.label }}</td><td>{{ badge(j.status) }}</td><td class="small muted">{{ j.started_at | ago }}</td><td class="small">{{ j.result or '' }}</td></tr>
-    {% else %}
-      <tr><td colspan="4" class="empty">No jobs yet. CLI runs show up in Recent activity on the dashboard.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+
+<div class="card flush">
+  {% if jobs.recent() %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Job</th><th>Status</th><th>Started</th><th>Duration</th><th>Result</th></tr></thead>
+      <tbody>
+      {% for j in jobs.recent() %}
+        <tr>
+          <td><strong>{{ j.label }}</strong></td>
+          <td><span class="badge {{ j.status }}">{{ j.status }}</span></td>
+          <td class="small muted">{{ j.started_at | ago }}</td>
+          <td class="small muted">{% if j.finished_at %}{{ ((j.finished_at - j.started_at).total_seconds()) | round(1) }}s{% else %}…{% endif %}</td>
+          <td class="small">{{ j.result or '' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  {{ empty('activity', 'No jobs yet', 'Start a stage from the dashboard. CLI runs appear in Recent activity instead.') }}
+  {% endif %}
 </div>
 {% endblock %}

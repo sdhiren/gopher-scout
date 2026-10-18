@@ -1,14 +1,25 @@
 {% extends "base.html" %}
-{% from "_macros.html" import idea_card %}
+{% from "_macros.html" import icon, idea_card %}
 {% block title %}Ideas · gopher-scout{% endblock %}
 {% block content %}
+{% set COLUMN_META = {
+  'Awaiting your review': ('c-review', 'Your move: approve, defer or reject.'),
+  'Approved': ('c-approved', 'Start an implementation from the idea page.'),
+  'In progress': ('c-progress', 'Being built, or needs your attention.'),
+  'Ready for PR': ('c-ready', 'Committed locally. Push it yourself.'),
+  'Upstream': ('c-upstream', 'PR opened, merged or closed.'),
+  'Parked': ('c-parked', 'Deferred or rejected by you.'),
+  'Filtered by Critic': ('c-filtered', 'Unscored, or not strong enough. You can overrule.'),
+} %}
 <div class="page-head">
   <div>
-    <h1>Ideas</h1>
-    <p class="muted">Best-scored first within each column. Click an idea to read the full analysis and decide.</p>
+    <div class="eyebrow">{{ icon('bulb', 'sm') }} Idea board</div>
+    <h1>Every idea, from proposal to merge</h1>
+    <p class="lede">Best-scored first in each column. Open a card to read the problem, the evidence and the plan, then decide.</p>
   </div>
-  <form method="get" action="/ideas">
-    <select name="project" onchange="this.form.submit()" aria-label="Filter by project">
+  <form method="get" action="/ideas" class="actions">
+    <label class="field" for="project-filter" style="margin:0">Project</label>
+    <select id="project-filter" name="project" onchange="this.form.submit()">
       <option value="">All projects</option>
       {% for p in projects if p.ideas %}
       <option value="{{ p.id }}" {{ 'selected' if project_filter == p.id }}>{{ p.full_name }} ({{ p.ideas | length }})</option>
@@ -16,11 +27,14 @@
     </select>
   </form>
 </div>
+
 <div class="board">
   {% for title, items in columns %}
-  <section class="column">
-    <h2><span>{{ title }}</span><span class="muted">{{ items | length }}</span></h2>
-    {% for idea in items %}{{ idea_card(idea, show_project=not project_filter) }}{% else %}<div class="empty">—</div>{% endfor %}
+  {% set meta = COLUMN_META[title] %}
+  <section class="column {{ meta[0] }}" aria-label="{{ title }}">
+    <div class="column-head"><span class="dot"></span>{{ title }}<span class="n">{{ items | length }}</span></div>
+    <p class="hint">{{ meta[1] }}</p>
+    {% for idea in items %}{{ idea_card(idea, show_project=not project_filter) }}{% else %}<div class="empty compact">Nothing here yet</div>{% endfor %}
   </section>
   {% endfor %}
 </div>

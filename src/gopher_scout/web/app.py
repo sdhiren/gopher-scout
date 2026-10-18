@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import zlib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -49,6 +50,11 @@ def _label(value: object) -> str:
     return str(value).replace("_", " ")
 
 
+def _hue(value: str) -> int:
+    """A stable colour hue per repository, for its avatar."""
+    return zlib.crc32(value.encode()) % 360
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     pipeline = Pipeline(settings)
@@ -59,7 +65,16 @@ def create_app() -> FastAPI:
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.filters["ago"] = _ago
     templates.env.filters["label"] = _label
+    templates.env.filters["hue"] = _hue
     templates.env.globals["jobs"] = jobs
+    templates.env.globals["max_ideas"] = settings.max_ideas_per_project
+    templates.env.globals["budget"] = settings.max_budget_usd_per_run
+
+    def nav_counts() -> dict[str, int]:
+        with session_scope() as s:
+            return {"awaiting": len(repo.list_ideas(s, [IdeaStatus.AWAITING_REVIEW]))}
+
+    templates.env.globals["nav_counts"] = nav_counts
     # Cache-bust the stylesheet whenever it changes.
     templates.env.globals["css_version"] = int((HERE / "static" / "style.css").stat().st_mtime)
 
@@ -136,8 +151,6 @@ def create_app() -> FastAPI:
                 profile=run.profile if run else None,
                 events=repo.events_for(s, "project", project_id),
                 P=ProjectStatus,
-                max_ideas=settings.max_ideas_per_project,
-                budget=settings.max_budget_usd_per_run,
             )
 
     @app.get("/jobs", response_class=HTMLResponse)

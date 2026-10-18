@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, idea_card, timeline %}
+{% from "_macros.html" import icon, badge, avatar, idea_card, timeline, empty, confirm_form %}
 {% block title %}{{ project.full_name }} · gopher-scout{% endblock %}
 {% block content %}
 {% set profiling = jobs.busy('stage:profile') %}
@@ -9,70 +9,81 @@
    ~ ' go vet, staticcheck and govulncheck, then checks its contribution policy.\n\nFree — no Claude calls. Usually takes 1–3 minutes.' %}
 {% set analyse_msg = 'Analyse ' ~ project.full_name ~ ' with Claude?\n\nThe Analyst reads the code and proposes up to '
    ~ max_ideas ~ ' improvement ideas.\n\nThis spends Claude credits (capped at $' ~ '%.2f' | format(budget) ~ ') and takes several minutes.' %}
+
 <div class="page-head">
-  <div>
-    <h1>{{ project.full_name }}</h1>
-    <div class="actions">{{ badge(project.status) }}</div>
+  <div class="detail-hero">
+    {{ avatar(project.full_name, 'lg') }}
+    <div>
+      <div class="eyebrow"><a href="/projects">{{ icon('folder', 'sm') }} Projects</a> / <span>{{ project.full_name.split('/')[0] }}</span></div>
+      <h1>{{ project.full_name.split('/')[1] }}</h1>
+      <div class="chips">{{ badge(project.status) }}<span class="chip">{{ icon('star') }}{{ '{:,}'.format(project.stars) }}</span>{% if project.license %}<span class="chip">{{ project.license }}</span>{% endif %}</div>
+    </div>
   </div>
   <div class="actions">
-    <a class="button" href="{{ project.html_url }}" target="_blank" rel="noopener">View on GitHub ↗</a>
-    <form class="inline" method="post" action="/actions/profile" onsubmit='return confirm({{ profile_msg | tojson }})'>
-      <input type="hidden" name="project_id" value="{{ project.id }}">
-      <button {{ 'disabled' if profiling }}>{{ 'Profiling…' if profiling else ('Re-profile' if profile else 'Profile') }}</button>
-    </form>
+    <a class="button" href="{{ project.html_url }}" target="_blank" rel="noopener">{{ icon('external', 'sm') }}View on GitHub ↗</a>
+    {{ confirm_form('/actions/profile', profile_msg, 'Profiling…' if profiling else ('Re-profile' if profile else 'Profile'), '', profiling, project.id, 'scan') }}
     {% if project.status in (P.PROFILED, P.ANALYSED) %}
-    <form class="inline" method="post" action="/actions/analyse" onsubmit='return confirm({{ analyse_msg | tojson }})'>
-      <input type="hidden" name="project_id" value="{{ project.id }}">
-      <button class="primary" {{ 'disabled' if analysing }}>{{ 'Analysing…' if analysing else 'Analyse' }}</button>
-    </form>
+    {{ confirm_form('/actions/analyse', analyse_msg, 'Analysing…' if analysing else 'Analyse', 'primary', analysing, project.id, 'sparkles') }}
     {% endif %}
   </div>
 </div>
 
 {% if project.status_reason and project.status in (P.SKIPPED, P.FAILED) %}
-<div class="callout {{ 'bad' if project.status == P.FAILED else 'warn' }}">{{ project.status_reason }}</div>
+<div class="callout {{ 'bad' if project.status == P.FAILED else 'warn' }}">{{ icon('alert') }}<span>{{ project.status_reason }}</span></div>
 {% endif %}
 
 <div class="card about">
-  <h2>About</h2>
+  <h2>{{ icon('book') }} About</h2>
   {% if project.description %}<p class="lead">{{ project.description }}</p>{% endif %}
   {% if profile and profile.readme_intro %}
   <h3>From the README</h3>
-  <p class="prose">{{ profile.readme_intro }}</p>
+  <p class="prose readme">{{ profile.readme_intro }}</p>
   {% elif not profile %}
-  <p class="small muted">Profile this project to see the opening of its README here.</p>
+  <p class="small muted">{{ icon('scan', 'sm') }} Profile this project to see the opening of its README here.</p>
   {% endif %}
   {% if project.summary %}
   <h3>Analyst summary</h3>
   <p class="prose">{{ project.summary }}</p>
   {% endif %}
   {% if project.topics %}
-  <div class="actions">{% for topic in project.topics %}<span class="badge">{{ topic }}</span>{% endfor %}</div>
+  <div class="chips" style="margin-top:.9rem">{% for topic in project.topics %}<span class="chip">#{{ topic }}</span>{% endfor %}</div>
   {% endif %}
   <dl class="stats">
-    <div><dt>Stars</dt><dd>{{ '{:,}'.format(project.stars) }}</dd></div>
-    <div><dt>Forks</dt><dd>{{ '{:,}'.format(project.forks) }}</dd></div>
-    <div><dt>Open issues</dt><dd>{{ '{:,}'.format(project.open_issues) }}</dd></div>
-    <div><dt>Licence</dt><dd>{{ project.license or '—' }}</dd></div>
-    <div><dt>Default branch</dt><dd class="mono">{{ project.default_branch }}</dd></div>
-    <div><dt>Last push</dt><dd>{{ project.pushed_at | ago }}</dd></div>
-    <div><dt>Selection score</dt><dd>{{ '%.1f' | format(project.selection_score) }}/10</dd></div>
+    <div><dt>{{ icon('star') }}Stars</dt><dd>{{ '{:,}'.format(project.stars) }}</dd></div>
+    <div><dt>{{ icon('fork') }}Forks</dt><dd>{{ '{:,}'.format(project.forks) }}</dd></div>
+    <div><dt>{{ icon('issue') }}Open issues</dt><dd>{{ '{:,}'.format(project.open_issues) }}</dd></div>
+    <div><dt>{{ icon('lock') }}Licence</dt><dd>{{ project.license or '—' }}</dd></div>
+    <div><dt>{{ icon('branch') }}Branch</dt><dd class="mono" style="font-size:.9rem">{{ project.default_branch }}</dd></div>
+    <div><dt>{{ icon('clock') }}Last push</dt><dd>{{ project.pushed_at | ago }}</dd></div>
+    <div><dt>{{ icon('target') }}Score</dt><dd>{{ '%.1f' | format(project.selection_score) }}<span class="faint small">/10</span></dd></div>
   </dl>
-  <p class="small"><a href="{{ project.html_url }}" target="_blank" rel="noopener">{{ project.html_url }}</a></p>
+  <p class="small" style="margin:0"><a href="{{ project.html_url }}" target="_blank" rel="noopener">{{ project.html_url }}</a></p>
 </div>
 
 <div class="grid two">
   <div>
     <div class="card">
-      <h2>Ideas</h2>
-      {% for idea in project.ideas %}{{ idea_card(idea, show_project=False) }}{% else %}<div class="empty">No ideas yet.</div>{% endfor %}
+      <div class="card-head"><h2>{{ icon('bulb') }} Ideas</h2>{% if project.ideas %}<a class="small" href="/ideas?project={{ project.id }}">On the board →</a>{% endif %}</div>
+      {% if project.ideas %}
+      <div class="idea-list">{% for idea in project.ideas %}{{ idea_card(idea, show_project=False) }}{% endfor %}</div>
+      {% elif project.status == P.PROFILED %}
+      {{ empty('sparkles', 'Ready for analysis', 'Click Analyse to have Claude propose improvements.') }}
+      {% else %}
+      {{ empty('bulb', 'No ideas yet', 'Profile, then analyse this project to get ideas.') }}
+      {% endif %}
     </div>
     {% if profile %}
     <div class="card">
-      <h2>Static analysis</h2>
+      <h2>{{ icon('scan') }} Static analysis</h2>
       {% for t in profile.tool_runs %}
       <details>
-        <summary><strong>{{ t.tool }}</strong> — {% if not t.available %}<span class="muted">not installed</span>{% elif not t.ok %}<span class="badge failed">error</span>{% else %}{{ t.findings | length }} finding{{ 's' if t.findings | length != 1 }}{% endif %}</summary>
+        <summary>
+          <span class="check-row">
+            {% if not t.available %}<span class="faint">{{ icon('x') }}</span>{% elif not t.ok %}<span class="bad">{{ icon('alert') }}</span>{% else %}<span class="ok">{{ icon('check') }}</span>{% endif %}
+            <strong>{{ t.tool }}</strong>
+          </span>
+          <span class="small muted">{% if not t.available %}not available{% elif not t.ok %}error{% else %}{{ t.findings | length }} finding{{ 's' if t.findings | length != 1 }}{% endif %}</span>
+        </summary>
         {% if t.error %}<pre>{{ t.error }}</pre>{% endif %}
         {% if t.findings %}<pre>{% for f in t.findings[:80] %}{{ f.file }}{% if f.line %}:{{ f.line }}{% endif %}  {{ f.message }}
 {% endfor %}</pre>{% endif %}
@@ -84,23 +95,23 @@
   <div>
     {% if profile %}
     <div class="card">
-      <h2>Profile <span class="mono small muted">@ {{ profile.commit_sha[:8] }}</span></h2>
+      <h2>{{ icon('code') }} Profile <span class="mono tiny muted">@ {{ profile.commit_sha[:8] }}</span></h2>
       <dl class="facts">
         <dt>Module</dt><dd class="mono small">{{ profile.module_path or '—' }}</dd>
         <dt>Go</dt><dd>{{ profile.go_version or '—' }}</dd>
-        <dt>Go files</dt><dd>{{ profile.go_files }} ({{ profile.test_files }} tests)</dd>
+        <dt>Go files</dt><dd>{{ profile.go_files }} <span class="muted">({{ profile.test_files }} tests)</span></dd>
         <dt>Lines</dt><dd>{{ '{:,}'.format(profile.lines_of_code) }}</dd>
         <dt>Packages</dt><dd>{{ profile.packages | length }}</dd>
         <dt>Direct deps</dt><dd>{{ profile.direct_dependencies }}</dd>
         <dt>CI</dt><dd>{{ 'yes' if profile.has_ci else 'no' }}{{ ' · golangci config' if profile.has_golangci_config }}</dd>
         <dt>Merged PRs (90d)</dt><dd>{{ profile.merged_prs_last_90d if profile.merged_prs_last_90d is not none else '—' }}</dd>
-        <dt>AI policy</dt><dd>{{ profile.ai_policy | label }}</dd>
+        <dt>AI policy</dt><dd><span class="badge {{ {'restrictive': 'failed', 'permissive': 'passed'}.get(profile.ai_policy, '') }}">{{ profile.ai_policy | label }}</span></dd>
       </dl>
       {% if profile.ai_policy_evidence %}<p class="small muted" style="margin-top:.6rem">{{ profile.ai_policy_evidence }}</p>{% endif %}
-      {% if project.local_path %}<p class="small mono muted" style="margin-top:.6rem">{{ project.local_path }}</p>{% endif %}
+      {% if project.local_path %}<p class="tiny mono faint" style="margin:.7rem 0 0">{{ project.local_path }}</p>{% endif %}
     </div>
     {% endif %}
-    <div class="card"><h2>History</h2>{{ timeline(events) }}</div>
+    <div class="card"><h2>{{ icon('history') }} History</h2>{{ timeline(events) }}</div>
   </div>
 </div>
 {% endblock %}

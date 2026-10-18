@@ -1,31 +1,83 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge %}
+{% from "_macros.html" import icon, badge, avatar, empty %}
 {% block title %}Projects · gopher-scout{% endblock %}
 {% block content %}
+{% set statuses = projects | map(attribute='status') | map('string') | list %}
 <div class="page-head">
   <div>
-    <h1>Projects</h1>
-    <p class="muted">Every repository the Scout found, ordered by selection score.</p>
+    <div class="eyebrow">{{ icon('folder', 'sm') }} Projects</div>
+    <h1>The scouting map</h1>
+    <p class="lede">Every repository the Scout found, ranked by how promising it looks: active, mid-sized, licensed, with an issue backlog.</p>
   </div>
-  <form class="inline" method="post" action="/actions/discover"><button>Discover more</button></form>
+  <form method="post" action="/actions/discover"><button class="primary" {{ 'disabled' if jobs.busy('stage:discover') }}>{{ icon('search', 'sm') }}{{ 'Discovering…' if jobs.busy('stage:discover') else 'Discover more' }}</button></form>
 </div>
-<div class="card table-wrap">
-  <table>
-    <thead><tr><th>Repository</th><th class="num">★</th><th class="num">Score</th><th>Status</th><th class="num">Ideas</th><th>Last push</th></tr></thead>
-    <tbody>
-    {% for p in projects %}
-      <tr>
-        <td><a href="/projects/{{ p.id }}">{{ p.full_name }}</a><div class="small muted">{{ (p.description or '') | truncate(110) }}</div></td>
-        <td class="num">{{ '{:,}'.format(p.stars) }}</td>
-        <td class="num">{{ '%.1f' | format(p.selection_score) }}</td>
-        <td>{{ badge(p.status) }}</td>
-        <td class="num">{{ p.ideas | length }}</td>
-        <td class="small muted">{{ p.pushed_at | ago }}</td>
-      </tr>
-    {% else %}
-      <tr><td colspan="6" class="empty">No projects yet — click “Discover more”.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+
+<div class="card flush">
+  {% if projects %}
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="Filter by name or description…" aria-label="Filter projects">
+    <div class="seg" role="group" aria-label="Status filter">
+      <button type="button" data-status="" aria-pressed="true">All <span class="faint">{{ projects | length }}</span></button>
+      {% for st in ['discovered', 'profiled', 'analysed', 'skipped', 'failed'] if st in statuses %}
+      <button type="button" data-status="{{ st }}" aria-pressed="false">{{ st | capitalize }} <span class="faint">{{ statuses | select('equalto', st) | list | length }}</span></button>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Repository</th><th class="num">Stars</th><th class="hide-sm">Score</th><th>Status</th><th class="num hide-sm">Ideas</th><th class="hide-sm">Last push</th></tr></thead>
+      <tbody id="rows">
+      {% for p in projects %}
+        <tr data-status="{{ p.status }}" data-text="{{ (p.full_name ~ ' ' ~ (p.description or '')) | lower }}">
+          <td>
+            <div class="repo-cell">
+              {{ avatar(p.full_name) }}
+              <div style="min-width:0">
+                <a class="name" href="/projects/{{ p.id }}">{{ p.full_name }}</a>
+                <div class="desc">{{ p.description or '' }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="num nowrap">{{ icon('star', 'sm') }} {{ '{:,}'.format(p.stars) }}</td>
+          <td class="hide-sm" style="min-width:120px"><div class="meter" style="grid-template-columns: 1fr 2rem; margin:0"><span class="track"><span class="fill" style="width: {{ p.selection_score * 10 }}%"></span></span><span class="val">{{ '%.1f' | format(p.selection_score) }}</span></div></td>
+          <td>{{ badge(p.status) }}</td>
+          <td class="num hide-sm">{{ p.ideas | length or '–' }}</td>
+          <td class="small muted hide-sm nowrap">{{ p.pushed_at | ago }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div id="no-match" hidden>{{ empty('search', 'No projects match', 'Try a different filter.') }}</div>
+  </div>
+  {% else %}
+  {{ empty('search', 'No projects yet', 'Click “Discover more” to search GitHub for Go CLI tools.') }}
+  {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (() => {
+    const q = document.getElementById("q");
+    if (!q) return;
+    const rows = [...document.querySelectorAll("#rows tr")];
+    const segs = [...document.querySelectorAll(".seg button")];
+    let status = "";
+    const apply = () => {
+      const term = q.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(r => {
+        const ok = (!status || r.dataset.status === status) && (!term || r.dataset.text.includes(term));
+        r.hidden = !ok; shown += ok;
+      });
+      document.getElementById("no-match").hidden = shown > 0;
+    };
+    q.addEventListener("input", apply);
+    segs.forEach(b => b.addEventListener("click", () => {
+      status = b.dataset.status;
+      segs.forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      apply();
+    }));
+  })();
+</script>
 {% endblock %}

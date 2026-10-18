@@ -1,127 +1,145 @@
 {% extends "base.html" %}
-{% from "_macros.html" import badge, score_bar, timeline %}
+{% from "_macros.html" import icon, badge, category, ring, meter, timeline, empty %}
 {% block title %}#{{ idea.id }} {{ idea.title }} · gopher-scout{% endblock %}
 {% block content %}
 {% set impl = idea.latest_implementation %}
 <div class="page-head">
-  <div>
-    <p class="small muted"><a href="/projects/{{ idea.project.id }}">{{ idea.project.full_name }}</a> · idea #{{ idea.id }} · proposed {{ idea.created_at | ago }}</p>
-    <h1>{{ idea.title }}</h1>
-    <div class="actions" style="margin-top:.4rem">
-      {{ badge(idea.status) }}
-      <span class="badge">{{ idea.category | label }}</span>
-      <span class="badge">effort {{ idea.effort }}</span>
-      <span class="badge">{{ idea.contribution_strategy | label }}</span>
-      <span class="badge">{{ 'backward compatible' if idea.backward_compatible else 'behaviour change' }}</span>
+  <div class="detail-hero">
+    {{ ring(idea.overall_score, 'lg') }}
+    <div>
+      <div class="eyebrow">
+        <a href="/ideas">{{ icon('bulb', 'sm') }} Ideas</a> /
+        <a href="/projects/{{ idea.project.id }}">{{ idea.project.full_name }}</a> /
+        <span>#{{ idea.id }} · proposed {{ idea.created_at | ago }}</span>
+      </div>
+      <h1>{{ idea.title }}</h1>
+      <div class="chips" style="margin-top:.5rem">
+        {{ badge(idea.status) }}
+        {{ category(idea.category) }}
+        <span class="chip">{{ icon('clock') }}effort {{ idea.effort }}</span>
+        <span class="chip">{{ icon('pr' if idea.contribution_strategy == 'direct_pr' else 'issue') }}{{ idea.contribution_strategy | label }}</span>
+        <span class="chip">{{ icon('check' if idea.backward_compatible else 'alert') }}{{ 'backward compatible' if idea.backward_compatible else 'behaviour change' }}</span>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="grid two">
   <div>
-    <div class="card">
-      <p><strong>{{ idea.summary }}</strong></p>
-      <h3>Problem</h3>
+    <div class="summary-line">{{ idea.summary }}</div>
+
+    <div class="card problem">
+      <h2 class="section-title"><span class="sicon">{{ icon('target') }}</span>The problem</h2>
       <p class="prose">{{ idea.problem_statement }}</p>
       <h3>Root cause</h3>
       <p class="prose">{{ idea.root_cause }}</p>
     </div>
 
-    <div class="card">
-      <h2>Evidence</h2>
+    <div class="card evidence-card">
+      <h2 class="section-title"><span class="sicon">{{ icon('code') }}</span>Evidence in the code</h2>
       {% for ev in idea.evidence %}
+      {% set anchor = ('#L' ~ ev.line_start ~ ('-L' ~ ev.line_end if ev.line_end else '')) if ev.line_start else '' %}
       <div class="evidence">
-        {% set anchor = ('#L' ~ ev.line_start ~ ('-L' ~ ev.line_end if ev.line_end else '')) if ev.line_start else '' %}
-        <a class="mono" href="{{ blob_base }}/{{ ev.file }}{{ anchor }}" target="_blank" rel="noopener">{{ ev.file }}{% if ev.line_start %}:{{ ev.line_start }}{% if ev.line_end %}-{{ ev.line_end }}{% endif %}{% endif %}</a>
+        <div class="ev-head">{{ icon('file', 'sm') }}
+          <a href="{{ blob_base }}/{{ ev.file }}{{ anchor }}" target="_blank" rel="noopener">{{ ev.file }}{% if ev.line_start %}:{{ ev.line_start }}{% if ev.line_end %}-{{ ev.line_end }}{% endif %}{% endif %}</a>
+          <span style="margin-left:auto" class="faint">{{ icon('external', 'sm') }}</span>
+        </div>
         {% if ev.snippet %}<pre>{{ ev.snippet }}</pre>{% endif %}
-        <p class="prose small">{{ ev.explanation }}</p>
+        <p class="prose">{{ ev.explanation }}</p>
       </div>
       {% endfor %}
     </div>
 
-    <div class="card">
-      <h2>How we'd address it</h2>
+    <div class="card solution">
+      <h2 class="section-title"><span class="sicon">{{ icon('wrench') }}</span>How we'd fix it</h2>
       <p class="prose">{{ idea.proposed_solution }}</p>
       {% if idea.code_sketch %}<h3>Sketch</h3><pre>{{ idea.code_sketch }}</pre>{% endif %}
       {% if idea.alternatives_considered %}<h3>Alternatives considered</h3><p class="prose">{{ idea.alternatives_considered }}</p>{% endif %}
-      {% if idea.files_to_touch %}<h3>Files to touch</h3><p class="mono small">{{ idea.files_to_touch | join(', ') }}</p>{% endif %}
+      {% if idea.files_to_touch %}
+      <h3>Files to touch</h3>
+      <div class="chips">{% for f in idea.files_to_touch %}<span class="chip mono">{{ icon('file') }}{{ f }}</span>{% endfor %}</div>
+      {% endif %}
     </div>
 
-    <div class="card">
-      <h2>Benefits</h2>
+    <div class="card benefits">
+      <h2 class="section-title"><span class="sicon">{{ icon('trend') }}</span>Why it's worth it</h2>
       <ul class="clean">{% for b in idea.benefits %}<li>{{ b }}</li>{% endfor %}</ul>
-      {% if idea.quantified_impact %}<h3 style="margin-top:.8rem">Expected impact</h3><p class="prose">{{ idea.quantified_impact }}</p>{% endif %}
-      <h3 style="margin-top:.8rem">Risks</h3>
-      <p class="prose">{{ idea.risks }}</p>
+      {% if idea.quantified_impact %}<h3>Expected impact</h3><p class="prose">{{ idea.quantified_impact }}</p>{% endif %}
+      <h3>Risks</h3>
+      <div class="callout warn">{{ icon('alert') }}<span class="prose">{{ idea.risks }}</span></div>
     </div>
 
-    <div class="card">
-      <h2>Acceptance criteria</h2>
-      <ul class="checks">{% for c in idea.acceptance_criteria %}<li>{{ c }}</li>{% endfor %}</ul>
+    <div class="card criteria">
+      <h2 class="section-title"><span class="sicon">{{ icon('listcheck') }}</span>Done when…</h2>
+      <ul class="checks">{% for c in idea.acceptance_criteria %}<li>{{ icon('check') }}<span>{{ c }}</span></li>{% endfor %}</ul>
       {% if idea.related_issue_urls %}
-      <h3 style="margin-top:.8rem">Related issues</h3>
+      <h3>Related issues</h3>
       <ul class="clean">{% for u in idea.related_issue_urls %}<li><a href="{{ u }}" target="_blank" rel="noopener">{{ u }}</a></li>{% endfor %}</ul>
       {% endif %}
     </div>
   </div>
 
   <div>
-    {% set decisions = [(S.APPROVED, 'Approve', 'ok'), (S.DEFERRED, 'Defer', ''), (S.REJECTED, 'Reject', 'bad'), (S.AWAITING_REVIEW, 'Back to review' if idea.status != S.CRITIC_REJECTED else 'Overrule Critic', '')] %}
+    {% set decisions = [(S.APPROVED, 'Approve', 'ok', 'check'), (S.DEFERRED, 'Defer', '', 'clock'), (S.REJECTED, 'Reject', 'bad', 'x'), (S.AWAITING_REVIEW, 'Back to review' if idea.status != S.CRITIC_REJECTED else 'Overrule Critic', '', 'refresh')] %}
     {% set available = decisions | selectattr(0, 'in', transitions) | list %}
     {% if available %}
-    <div class="card">
-      <h2>Your decision</h2>
+    <div class="card decision">
+      <h2>{{ icon('user') }} Your decision</h2>
       <form method="post" action="/ideas/{{ idea.id }}/decision">
-        <label class="small muted" for="notes">Notes — passed to the Implementer if approved</label>
+        <label class="field" for="notes">Notes for the Implementer (optional)</label>
         <textarea id="notes" name="notes" placeholder="e.g. keep the existing flag name; add a test for Windows paths">{{ idea.user_notes or '' }}</textarea>
-        <div class="actions">
-          {% for status, label, cls in available %}
-          <button class="{{ cls }}" name="decision" value="{{ status }}">{{ label }}</button>
+        <div class="actions spaced">
+          {% for status, label, cls, ic in available %}
+          <button class="{{ cls }}" name="decision" value="{{ status }}">{{ icon(ic, 'sm') }}{{ label }}</button>
           {% endfor %}
         </div>
       </form>
     </div>
     {% elif idea.user_notes %}
-    <div class="card"><h2>Your notes</h2><p class="prose">{{ idea.user_notes }}</p></div>
+    <div class="card"><h2>{{ icon('user') }} Your notes</h2><p class="prose">{{ idea.user_notes }}</p></div>
     {% endif %}
 
     {% if implementable or impl %}
     <div class="card">
-      <h2>Implementation</h2>
+      <h2>{{ icon('branch') }} Implementation</h2>
       {% if implementable %}
-      <form method="post" action="/ideas/{{ idea.id }}/implement">
-        <button class="primary" {{ 'disabled' if busy }}>{{ 'Re-implement' if impl else 'Start implementation' }}</button>
-        {% if busy %}<span class="small muted">a job is running on this repo</span>{% endif %}
+      <form method="post" action="/ideas/{{ idea.id }}/implement" onsubmit='return confirm({{ ("Implement “" ~ idea.title ~ "”?\n\nCreates a local branch in " ~ idea.project.full_name ~ ", lets Claude implement the change with tests, then builds, vets and tests it in a sandbox. Nothing is pushed.\n\nSpends Claude credits (capped at $" ~ "%.2f" | format(budget) ~ " per run, up to 3 attempts).") | tojson }})'>
+        <button class="primary" {{ 'disabled' if busy }}>{{ icon('play', 'sm') }}{{ 'Re-implement' if impl else 'Start implementation' }}</button>
       </form>
-      <p class="small muted" style="margin-top:.5rem">Creates a local branch, implements, then builds/vets/tests in a sandbox and reviews the diff. Nothing is pushed.</p>
+      {% if busy %}<p class="small muted" style="margin:.5rem 0 0">A job is already running on this repository.</p>{% endif %}
+      <p class="small muted" style="margin:.6rem 0 0">{{ icon('lock', 'sm') }} Local branch only — you review, push and open the PR.</p>
       {% endif %}
 
       {% if impl %}
-      <dl class="facts" style="margin-top:.8rem">
-        <dt>Status</dt><dd>{{ badge(impl.status) }} after {{ impl.attempts }} attempt{{ 's' if impl.attempts != 1 }}</dd>
+      <dl class="facts" style="margin-top:1rem">
+        <dt>Status</dt><dd>{{ badge(impl.status) }} <span class="small muted">after {{ impl.attempts }} attempt{{ 's' if impl.attempts != 1 }}</span></dd>
         <dt>Branch</dt><dd class="mono">{{ impl.branch }}</dd>
         <dt>Commit</dt><dd class="mono">{{ impl.commit_sha[:10] if impl.commit_sha else '—' }}</dd>
         <dt>Clone</dt><dd class="mono small">{{ impl.repo_path }}</dd>
       </dl>
-      {% if impl.error %}<div class="callout bad small" style="margin-top:.8rem">{{ impl.error }}</div>{% endif %}
-      {% if impl.diff_stat %}<pre>{{ impl.diff_stat }}</pre>{% endif %}
+      {% if impl.error %}<div class="callout bad" style="margin-top:.9rem">{{ icon('alert') }}<span>{{ impl.error }}</span></div>{% endif %}
+      {% if impl.diff_stat %}<h3>Diff</h3><pre>{{ impl.diff_stat }}</pre>{% endif %}
 
+      {% if impl.review.get('checks') %}<h3>Checks</h3>{% endif %}
       {% for c in impl.review.get('checks', []) %}
-      <details><summary>{{ '✅' if c.ok else '❌' }} {{ c.name }} <span class="mono small muted">{{ c.command }}</span></summary>{% if c.output %}<pre>{{ c.output }}</pre>{% endif %}</details>
+      <details>
+        <summary><span class="check-row">{% if c.ok %}<span class="ok">{{ icon('check') }}</span>{% else %}<span class="bad">{{ icon('x') }}</span>{% endif %}<strong>{{ c.name }}</strong></span><span class="mono tiny muted">{{ c.command }}</span></summary>
+        {% if c.output %}<pre>{{ c.output }}</pre>{% endif %}
+      </details>
       {% endfor %}
       {% set lr = impl.review.get('llm_review') %}
       {% if lr %}
-      <h3 style="margin-top:.8rem">Reviewer</h3>
+      <h3>Reviewer</h3>
       <p class="prose small">{{ lr.summary }}</p>
       {% for f in lr.findings %}<p class="small">{{ badge(f.severity) }} <span class="mono">{{ f.file }}</span> {{ f.message }}</p>{% endfor %}
       {% endif %}
-      {% if impl.summary %}<h3 style="margin-top:.8rem">Change summary (for the PR)</h3><p class="prose small">{{ impl.summary }}</p>{% endif %}
+      {% if impl.summary %}<h3>Change summary (for the PR)</h3><p class="prose small">{{ impl.summary }}</p>{% endif %}
       {% set rep = impl.review.get('report') %}
-      {% if rep and rep.open_questions %}<div class="callout warn small">{{ rep.open_questions }}</div>{% endif %}
+      {% if rep and rep.open_questions %}<div class="callout warn">{{ icon('alert') }}<span>{{ rep.open_questions }}</span></div>{% endif %}
 
       {% if impl.commit_sha %}
-      <h3 style="margin-top:.8rem">Push it yourself</h3>
-      <pre>cd {{ impl.repo_path }}
+      <h3>Push it yourself</h3>
+      <pre class="terminal">cd {{ impl.repo_path }}
 git show --stat {{ impl.commit_sha[:10] }}
 gh repo fork --remote --remote-name fork
 git push -u fork {{ impl.branch }}
@@ -133,38 +151,41 @@ gh pr create --repo {{ idea.project.full_name }} --head {{ impl.branch }}</pre>
 
     {% if S.PR_OPENED in transitions or S.MERGED in transitions %}
     <div class="card">
-      <h2>Upstream</h2>
+      <h2>{{ icon('pr') }} Upstream</h2>
       <form method="post" action="/ideas/{{ idea.id }}/decision">
         {% if S.PR_OPENED in transitions %}
-        <input type="url" name="pr_url" placeholder="https://github.com/{{ idea.project.full_name }}/pull/…" required>
-        <div class="actions"><button name="decision" value="{{ S.PR_OPENED }}">Mark PR opened</button></div>
+        <label class="field" for="pr_url">Pull request URL</label>
+        <input id="pr_url" type="url" name="pr_url" placeholder="https://github.com/{{ idea.project.full_name }}/pull/…" required>
+        <div class="actions spaced"><button name="decision" value="{{ S.PR_OPENED }}">{{ icon('pr', 'sm') }}Mark PR opened</button></div>
         {% else %}
-        <p class="small">{% if idea.pr_url %}<a href="{{ idea.pr_url }}" target="_blank" rel="noopener">{{ idea.pr_url }}</a>{% endif %}</p>
+        {% if idea.pr_url %}<p class="small"><a href="{{ idea.pr_url }}" target="_blank" rel="noopener">{{ idea.pr_url }}</a></p>{% endif %}
         <div class="actions">
-          <button class="ok" name="decision" value="{{ S.MERGED }}">Merged</button>
-          <button class="bad" name="decision" value="{{ S.CLOSED }}">Closed</button>
+          <button class="ok" name="decision" value="{{ S.MERGED }}">{{ icon('check', 'sm') }}Merged</button>
+          <button class="bad" name="decision" value="{{ S.CLOSED }}">{{ icon('x', 'sm') }}Closed</button>
         </div>
         {% endif %}
       </form>
     </div>
     {% elif idea.pr_url %}
-    <div class="card"><h2>Upstream</h2><a href="{{ idea.pr_url }}" target="_blank" rel="noopener">{{ idea.pr_url }}</a></div>
+    <div class="card"><h2>{{ icon('pr') }} Upstream</h2><a href="{{ idea.pr_url }}" target="_blank" rel="noopener">{{ idea.pr_url }}</a></div>
     {% endif %}
 
     <div class="card">
-      <h2>Critic assessment {% if idea.overall_score is not none %}<span class="score">· {{ '%.1f' | format(idea.overall_score) }}/10</span>{% endif %}</h2>
+      <h2>{{ icon('shield') }} Critic's assessment</h2>
       {% if idea.critic_reasoning %}
-      {{ score_bar('Impact', idea.impact_score) }}
-      {{ score_bar('Confidence', idea.confidence_score) }}
-      {{ score_bar('Merge likelihood', idea.merge_likelihood) }}
-      <p class="prose small" style="margin-top:.6rem">{{ idea.critic_reasoning }}</p>
+      {{ meter('Impact', idea.impact_score) }}
+      {{ meter('Confidence', idea.confidence_score) }}
+      {{ meter('Merge likelihood', idea.merge_likelihood) }}
+      <p class="prose small" style="margin-top:.8rem">{{ idea.critic_reasoning }}</p>
       {% if idea.critic_suggestions %}<h3>Suggestions</h3><p class="prose small">{{ idea.critic_suggestions }}</p>{% endif %}
       {% if idea.duplicate_urls %}<h3>Possible duplicates</h3><ul class="clean small">{% for u in idea.duplicate_urls %}<li><a href="{{ u }}" target="_blank" rel="noopener">{{ u }}</a></li>{% endfor %}</ul>{% endif %}
-      {% else %}<div class="empty">Not critiqued yet.</div>{% endif %}
+      {% else %}
+      {{ empty('shield', 'Not critiqued yet', 'Run Critique from the dashboard to verify and score this idea.') }}
+      {% endif %}
     </div>
 
     <div class="card">
-      <h2>History</h2>
+      <h2>{{ icon('history') }} History</h2>
       {{ timeline(events) }}
     </div>
   </div>

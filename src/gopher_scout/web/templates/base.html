@@ -1,29 +1,68 @@
-<!doctype html>
+{% from "_macros.html" import icon %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}gopher-scout{% endblock %}</title>
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    (() => { try { const t = localStorage.getItem("gs-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {} })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v={{ css_version }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%2300add8'/%3E%3Cpath d='m16 8-2.4 5.6L8 16l2.4-5.6z' fill='white'/%3E%3C/svg%3E">
   {% set running = jobs.recent() | selectattr('running') | list %}
   {% if running %}<meta http-equiv="refresh" content="15">{% endif %}
 </head>
 <body>
-<header class="top">
-  <a class="brand" href="/">gopher-scout</a>
-  <nav>
-    {% set path = request.url.path %}
-    <a href="/" class="{{ 'active' if path == '/' }}">Dashboard</a>
-    <a href="/ideas" class="{{ 'active' if path.startswith('/ideas') }}">Ideas</a>
-    <a href="/projects" class="{{ 'active' if path.startswith('/projects') }}">Projects</a>
-    <a href="/jobs" class="{{ 'active' if path.startswith('/jobs') }}">Jobs</a>
-  </nav>
-  {% if running %}
-    <a class="running badge running" href="/jobs">{{ running | length }} job{{ 's' if running | length > 1 }} running</a>
-  {% endif %}
-</header>
-<main>
-{% block content %}{% endblock %}
-</main>
+{% set path = request.url.path %}
+{% set counts = nav_counts() %}
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="/">
+      <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="#fff" stroke-width="1.8"/><path d="m15.6 8.4-2.3 5-4.9 2.2 2.3-5z" fill="#fff"/></svg></span>
+      <span><span class="brand-name">gopher-scout</span><span class="brand-sub">Go CLI improvement scout</span></span>
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      <div class="nav-label">Workspace</div>
+      <a href="/" class="{{ 'active' if path == '/' }}">{{ icon('dashboard') }}<span class="label">Dashboard</span></a>
+      <a href="/ideas" class="{{ 'active' if path.startswith('/ideas') }}">{{ icon('bulb') }}<span class="label">Ideas</span>{% if counts.awaiting %}<span class="count" title="Awaiting your review">{{ counts.awaiting }}</span>{% endif %}</a>
+      <a href="/projects" class="{{ 'active' if path.startswith('/projects') }}">{{ icon('folder') }}<span class="label">Projects</span></a>
+      <a href="/jobs" class="{{ 'active' if path.startswith('/jobs') }}">{{ icon('activity') }}<span class="label">Jobs</span>{% if running %}<span class="pulse" title="{{ running | length }} running"></span>{% endif %}</a>
+    </nav>
+
+    <div class="side-foot">
+      <p class="side-note"><span class="lock">{{ icon('lock', 'sm') }}</span> Branches stay local. Nothing is pushed without you.</p>
+      <div class="theme-switch" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="light" aria-label="Light theme" title="Light">{{ icon('sun', 'sm') }}</button>
+        <button type="button" data-theme-choice="system" aria-label="System theme" title="System">{{ icon('monitor', 'sm') }}</button>
+        <button type="button" data-theme-choice="dark" aria-label="Dark theme" title="Dark">{{ icon('moon', 'sm') }}</button>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+  {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+  (() => {
+    const root = document.documentElement;
+    const buttons = document.querySelectorAll("[data-theme-choice]");
+    const current = () => root.dataset.theme || "system";
+    const sync = () => buttons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === current())));
+    buttons.forEach(b => b.addEventListener("click", () => {
+      const choice = b.dataset.themeChoice;
+      if (choice === "system") delete root.dataset.theme; else root.dataset.theme = choice;
+      try { localStorage.setItem("gs-theme", choice); } catch (e) {}
+      sync();
+    }));
+    sync();
+  })();
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

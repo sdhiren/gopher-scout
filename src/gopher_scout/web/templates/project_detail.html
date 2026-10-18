@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, idea_card, timeline %}
+{% block title %}{{ project.full_name }} · gopher-scout{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1><a href="{{ project.html_url }}" target="_blank" rel="noopener">{{ project.full_name }}</a></h1>
+    <p class="muted">{{ project.description or '' }}</p>
+    <div class="actions">{{ badge(project.status) }}<span class="badge">★ {{ '{:,}'.format(project.stars) }}</span><span class="badge">{{ project.license or 'no licence' }}</span></div>
+  </div>
+  <div class="actions">
+    <form class="inline" method="post" action="/actions/profile"><input type="hidden" name="project_id" value="{{ project.id }}"><button {{ 'disabled' if busy }}>{{ 'Re-profile' if profile else 'Profile' }}</button></form>
+    {% if project.status in (P.PROFILED, P.ANALYSED) %}
+    <form class="inline" method="post" action="/actions/analyse"><input type="hidden" name="project_id" value="{{ project.id }}"><button class="primary">Analyse</button></form>
+    {% endif %}
+  </div>
+</div>
+
+{% if project.status_reason and project.status in (P.SKIPPED, P.FAILED) %}
+<div class="callout {{ 'bad' if project.status == P.FAILED else 'warn' }}">{{ project.status_reason }}</div>
+{% endif %}
+{% if project.summary %}<div class="card"><h2>Analyst summary</h2><p class="prose">{{ project.summary }}</p></div>{% endif %}
+
+<div class="grid two">
+  <div>
+    <div class="card">
+      <h2>Ideas</h2>
+      {% for idea in project.ideas %}{{ idea_card(idea, show_project=False) }}{% else %}<div class="empty">No ideas yet.</div>{% endfor %}
+    </div>
+    {% if profile %}
+    <div class="card">
+      <h2>Static analysis</h2>
+      {% for t in profile.tool_runs %}
+      <details>
+        <summary><strong>{{ t.tool }}</strong> — {% if not t.available %}<span class="muted">not installed</span>{% elif not t.ok %}<span class="badge failed">error</span>{% else %}{{ t.findings | length }} finding{{ 's' if t.findings | length != 1 }}{% endif %}</summary>
+        {% if t.error %}<pre>{{ t.error }}</pre>{% endif %}
+        {% if t.findings %}<pre>{% for f in t.findings[:80] %}{{ f.file }}{% if f.line %}:{{ f.line }}{% endif %}  {{ f.message }}
+{% endfor %}</pre>{% endif %}
+      </details>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div>
+    {% if profile %}
+    <div class="card">
+      <h2>Profile <span class="mono small muted">@ {{ profile.commit_sha[:8] }}</span></h2>
+      <dl class="facts">
+        <dt>Module</dt><dd class="mono small">{{ profile.module_path or '—' }}</dd>
+        <dt>Go</dt><dd>{{ profile.go_version or '—' }}</dd>
+        <dt>Go files</dt><dd>{{ profile.go_files }} ({{ profile.test_files }} tests)</dd>
+        <dt>Lines</dt><dd>{{ '{:,}'.format(profile.lines_of_code) }}</dd>
+        <dt>Packages</dt><dd>{{ profile.packages | length }}</dd>
+        <dt>Direct deps</dt><dd>{{ profile.direct_dependencies }}</dd>
+        <dt>CI</dt><dd>{{ 'yes' if profile.has_ci else 'no' }}{{ ' · golangci config' if profile.has_golangci_config }}</dd>
+        <dt>Merged PRs (90d)</dt><dd>{{ profile.merged_prs_last_90d if profile.merged_prs_last_90d is not none else '—' }}</dd>
+        <dt>Open issues</dt><dd>{{ project.open_issues }}</dd>
+        <dt>AI policy</dt><dd>{{ profile.ai_policy | label }}</dd>
+      </dl>
+      {% if profile.ai_policy_evidence %}<p class="small muted" style="margin-top:.6rem">{{ profile.ai_policy_evidence }}</p>{% endif %}
+      {% if project.local_path %}<p class="small mono muted" style="margin-top:.6rem">{{ project.local_path }}</p>{% endif %}
+    </div>
+    {% endif %}
+    <div class="card"><h2>History</h2>{{ timeline(events) }}</div>
+  </div>
+</div>
+{% endblock %}

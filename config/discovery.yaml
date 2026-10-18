@@ -1,0 +1,26 @@
+# What the Scout agent looks for. Edit freely; re-run `gopher-scout discover`.
+#
+# Each topic produces one GitHub search query of the form:
+#   language:Go topic:<topic> stars:<min>..<max> pushed:>=<date> archived:false fork:false
+
+topics:
+  - cli
+  - command-line
+  - command-line-tool
+  - terminal
+  - tui
+
+min_stars: 500
+max_stars: 20000
+
+# Ignore repos without a commit to the default branch within this window.
+pushed_within_days: 60
+
+# Upper bound of repos fetched per topic (GitHub caps search pages at 100 items).
+per_topic_limit: 30
+
+# Repos never to touch (owner/name). Huge or famously strict projects go here.
+exclude:
+  - cli/cli
+  - spf13/cobra
+  - urfave/cli

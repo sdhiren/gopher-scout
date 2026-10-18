@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}gopher-scout{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}?v={{ css_version }}">
+  {% set running = jobs.recent() | selectattr('running') | list %}
+  {% if running %}<meta http-equiv="refresh" content="15">{% endif %}
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">gopher-scout</a>
+  <nav>
+    {% set path = request.url.path %}
+    <a href="/" class="{{ 'active' if path == '/' }}">Dashboard</a>
+    <a href="/ideas" class="{{ 'active' if path.startswith('/ideas') }}">Ideas</a>
+    <a href="/projects" class="{{ 'active' if path.startswith('/projects') }}">Projects</a>
+    <a href="/jobs" class="{{ 'active' if path.startswith('/jobs') }}">Jobs</a>
+  </nav>
+  {% if running %}
+    <a class="running badge running" href="/jobs">{{ running | length }} job{{ 's' if running | length > 1 }} running</a>
+  {% endif %}
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

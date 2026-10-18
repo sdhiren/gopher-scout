@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_macros.html" import idea_card, timeline %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="muted">Go CLI projects analysed, ideas proposed, and what you've approved.</p>
+  </div>
+  <div class="actions">
+    {% for stage, label in [('discover','Discover'),('profile','Profile next 5'),('analyse','Analyse next 3'),('critique','Critique proposed')] %}
+    <form class="inline" method="post" action="/actions/{{ stage }}"><button>{{ label }}</button></form>
+    {% endfor %}
+  </div>
+</div>
+
+{% set p = stats.projects_by_status %}{% set i = stats.ideas_by_status %}
+<div class="grid tiles">
+  <div class="card tile"><div class="value">{{ p.values() | sum }}</div><div class="label">projects tracked</div></div>
+  <div class="card tile"><div class="value">{{ p.get('analysed', 0) }}</div><div class="label">projects analysed</div></div>
+  <div class="card tile"><div class="value">{{ i.values() | sum }}</div><div class="label">ideas proposed</div></div>
+  <div class="card tile"><div class="value">{{ i.get('awaiting_review', 0) }}</div><div class="label">awaiting your review</div></div>
+  <div class="card tile"><div class="value">{{ i.get('ready_for_pr', 0) }}</div><div class="label">ready for PR</div></div>
+  <div class="card tile"><div class="value">{{ '%d%%' | format(stats.approval_rate * 100) if stats.approval_rate is not none else '—' }}</div><div class="label">approval rate</div></div>
+  <div class="card tile"><div class="value">${{ '%.2f' | format(stats.total_cost_usd) }}</div><div class="label">LLM spend</div></div>
+</div>
+
+<div class="grid two">
+  <div>
+    <div class="card">
+      <h2>Awaiting your review</h2>
+      {% for idea in awaiting %}{{ idea_card(idea) }}{% else %}<div class="empty">Nothing waiting. Run Discover → Profile → Analyse → Critique.</div>{% endfor %}
+      {% if awaiting %}<a class="small" href="/ideas">Open the board →</a>{% endif %}
+    </div>
+    {% if ready %}
+    <div class="card">
+      <h2>Implemented locally</h2>
+      {% for idea in ready %}{{ idea_card(idea) }}{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div>
+    <div class="card">
+      <h2>Spend by agent</h2>
+      {% if stats.cost_by_agent %}
+      <table>{% for agent, cost in stats.cost_by_agent.items() %}<tr><td>{{ agent }}</td><td class="num">${{ '%.2f' | format(cost) }}</td></tr>{% endfor %}</table>
+      {% else %}<div class="empty">No LLM calls yet.</div>{% endif %}
+    </div>
+    <div class="card">
+      <h2>Recent activity</h2>
+      {{ timeline(events) }}
+    </div>
+  </div>
+</div>
+{% endblock %}

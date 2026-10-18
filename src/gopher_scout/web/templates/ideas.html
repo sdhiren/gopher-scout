@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import idea_card %}
+{% block title %}Ideas · gopher-scout{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Ideas</h1>
+    <p class="muted">Best-scored first within each column. Click an idea to read the full analysis and decide.</p>
+  </div>
+  <form method="get" action="/ideas">
+    <select name="project" onchange="this.form.submit()" aria-label="Filter by project">
+      <option value="">All projects</option>
+      {% for p in projects if p.ideas %}
+      <option value="{{ p.id }}" {{ 'selected' if project_filter == p.id }}>{{ p.full_name }} ({{ p.ideas | length }})</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+<div class="board">
+  {% for title, items in columns %}
+  <section class="column">
+    <h2><span>{{ title }}</span><span class="muted">{{ items | length }}</span></h2>
+    {% for idea in items %}{{ idea_card(idea, show_project=not project_filter) }}{% else %}<div class="empty">—</div>{% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

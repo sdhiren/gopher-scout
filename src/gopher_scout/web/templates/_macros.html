@@ -1,0 +1,34 @@
+{% macro badge(value) -%}
+<span class="badge {{ value }}">{{ value | label }}</span>
+{%- endmacro %}
+
+{% macro idea_card(idea, show_project=True) -%}
+<a class="idea-card" href="/ideas/{{ idea.id }}">
+  <div class="title">{{ idea.title }}</div>
+  <div class="meta">
+    {% if show_project %}<span>{{ idea.project.full_name }}</span>·{% endif %}
+    <span>{{ idea.category | label }}</span>·
+    <span>effort {{ idea.effort }}</span>
+    {% if idea.overall_score is not none %}·<span class="score">{{ '%.1f' | format(idea.overall_score) }}</span>{% endif %}
+    {{ badge(idea.status) }}
+  </div>
+</a>
+{%- endmacro %}
+
+{% macro score_bar(name, value) -%}
+<div class="score-bar">
+  <span class="name">{{ name }}</span>
+  <span class="track"><span class="fill" style="width: {{ (value or 0) * 10 }}%"></span></span>
+  <span class="val">{{ value if value is not none else '—' }}</span>
+</div>
+{%- endmacro %}
+
+{% macro timeline(events) -%}
+{% if events %}
+<ul class="timeline">
+  {% for e in events %}
+  <li><span class="muted">{{ e.created_at | ago }}</span> · <strong>{{ e.actor }}</strong> {{ e.action | label }}{% if e.detail %} — <span class="muted">{{ e.detail | truncate(160) }}</span>{% endif %}</li>
+  {% endfor %}
+</ul>
+{% else %}<div class="empty">No activity yet.</div>{% endif %}
+{%- endmacro %}

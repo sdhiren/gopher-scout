@@ -2,16 +2,29 @@
 {% from "_macros.html" import badge, idea_card, timeline %}
 {% block title %}{{ project.full_name }} · gopher-scout{% endblock %}
 {% block content %}
+{% set profiling = jobs.busy('stage:profile') %}
+{% set analysing = jobs.busy('stage:analyse') %}
+{% set profile_msg = ('Re-profile ' if profile else 'Profile ') ~ project.full_name ~ '?\n\n'
+   ~ ('Fetches the latest commit and re-runs' if profile else 'Clones the repository into workspace/ and runs')
+   ~ ' go vet, staticcheck and govulncheck, then checks its contribution policy.\n\nFree — no Claude calls. Usually takes 1–3 minutes.' %}
+{% set analyse_msg = 'Analyse ' ~ project.full_name ~ ' with Claude?\n\nThe Analyst reads the code and proposes up to '
+   ~ max_ideas ~ ' improvement ideas.\n\nThis spends Claude credits (capped at $' ~ '%.2f' | format(budget) ~ ') and takes several minutes.' %}
 <div class="page-head">
   <div>
-    <h1><a href="{{ project.html_url }}" target="_blank" rel="noopener">{{ project.full_name }}</a></h1>
-    <p class="muted">{{ project.description or '' }}</p>
-    <div class="actions">{{ badge(project.status) }}<span class="badge">★ {{ '{:,}'.format(project.stars) }}</span><span class="badge">{{ project.license or 'no licence' }}</span></div>
+    <h1>{{ project.full_name }}</h1>
+    <div class="actions">{{ badge(project.status) }}</div>
   </div>
   <div class="actions">
-    <form class="inline" method="post" action="/actions/profile"><input type="hidden" name="project_id" value="{{ project.id }}"><button {{ 'disabled' if busy }}>{{ 'Re-profile' if profile else 'Profile' }}</button></form>
+    <a class="button" href="{{ project.html_url }}" target="_blank" rel="noopener">View on GitHub ↗</a>
+    <form class="inline" method="post" action="/actions/profile" onsubmit='return confirm({{ profile_msg | tojson }})'>
+      <input type="hidden" name="project_id" value="{{ project.id }}">
+      <button {{ 'disabled' if profiling }}>{{ 'Profiling…' if profiling else ('Re-profile' if profile else 'Profile') }}</button>
+    </form>
     {% if project.status in (P.PROFILED, P.ANALYSED) %}
-    <form class="inline" method="post" action="/actions/analyse"><input type="hidden" name="project_id" value="{{ project.id }}"><button class="primary">Analyse</button></form>
+    <form class="inline" method="post" action="/actions/analyse" onsubmit='return confirm({{ analyse_msg | tojson }})'>
+      <input type="hidden" name="project_id" value="{{ project.id }}">
+      <button class="primary" {{ 'disabled' if analysing }}>{{ 'Analysing…' if analysing else 'Analyse' }}</button>
+    </form>
     {% endif %}
   </div>
 </div>
@@ -19,7 +32,34 @@
 {% if project.status_reason and project.status in (P.SKIPPED, P.FAILED) %}
 <div class="callout {{ 'bad' if project.status == P.FAILED else 'warn' }}">{{ project.status_reason }}</div>
 {% endif %}
-{% if project.summary %}<div class="card"><h2>Analyst summary</h2><p class="prose">{{ project.summary }}</p></div>{% endif %}
+
+<div class="card about">
+  <h2>About</h2>
+  {% if project.description %}<p class="lead">{{ project.description }}</p>{% endif %}
+  {% if profile and profile.readme_intro %}
+  <h3>From the README</h3>
+  <p class="prose">{{ profile.readme_intro }}</p>
+  {% elif not profile %}
+  <p class="small muted">Profile this project to see the opening of its README here.</p>
+  {% endif %}
+  {% if project.summary %}
+  <h3>Analyst summary</h3>
+  <p class="prose">{{ project.summary }}</p>
+  {% endif %}
+  {% if project.topics %}
+  <div class="actions">{% for topic in project.topics %}<span class="badge">{{ topic }}</span>{% endfor %}</div>
+  {% endif %}
+  <dl class="stats">
+    <div><dt>Stars</dt><dd>{{ '{:,}'.format(project.stars) }}</dd></div>
+    <div><dt>Forks</dt><dd>{{ '{:,}'.format(project.forks) }}</dd></div>
+    <div><dt>Open issues</dt><dd>{{ '{:,}'.format(project.open_issues) }}</dd></div>
+    <div><dt>Licence</dt><dd>{{ project.license or '—' }}</dd></div>
+    <div><dt>Default branch</dt><dd class="mono">{{ project.default_branch }}</dd></div>
+    <div><dt>Last push</dt><dd>{{ project.pushed_at | ago }}</dd></div>
+    <div><dt>Selection score</dt><dd>{{ '%.1f' | format(project.selection_score) }}/10</dd></div>
+  </dl>
+  <p class="small"><a href="{{ project.html_url }}" target="_blank" rel="noopener">{{ project.html_url }}</a></p>
+</div>
 
 <div class="grid two">
   <div>
@@ -54,7 +94,6 @@
         <dt>Direct deps</dt><dd>{{ profile.direct_dependencies }}</dd>
         <dt>CI</dt><dd>{{ 'yes' if profile.has_ci else 'no' }}{{ ' · golangci config' if profile.has_golangci_config }}</dd>
         <dt>Merged PRs (90d)</dt><dd>{{ profile.merged_prs_last_90d if profile.merged_prs_last_90d is not none else '—' }}</dd>
-        <dt>Open issues</dt><dd>{{ project.open_issues }}</dd>
         <dt>AI policy</dt><dd>{{ profile.ai_policy | label }}</dd>
       </dl>
       {% if profile.ai_policy_evidence %}<p class="small muted" style="margin-top:.6rem">{{ profile.ai_policy_evidence }}</p>{% endif %}

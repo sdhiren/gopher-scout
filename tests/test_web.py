@@ -29,6 +29,12 @@ def test_pages_render_and_approval_flow(settings: Settings, seeded: tuple[int, i
         resp = client.get(url)
         assert resp.status_code == 200, url
 
+    project_page = client.get(f"/projects/{project_id}").text
+    assert "View on GitHub" in project_page
+    assert 'href="https://github.com/acme/tool"' in project_page
+    assert "return confirm(" in project_page  # Profile asks before running
+    assert "Profile this project to see the opening of its README" in project_page
+
     page = client.get(f"/ideas/{idea_id}").text
     assert "Return non-zero exit code" in page
     assert "Scripts cannot detect failures" in page

@@ -64,6 +64,49 @@ def detect_ai_policy(texts: dict[str, str]) -> tuple[str, str | None]:
     return "none_found", None
 
 
+_HTML_BLOCK = re.compile(r"<(p|div|picture|table|details)\b.*?</\1>", re.IGNORECASE | re.DOTALL)
+_HTML_TAG = re.compile(r"<[^>]+>")
+_MD_IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_MD_EMPTY_LINK = re.compile(r"\[\s*\]\([^)]*\)")  # what is left of a linked badge
+_MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+
+
+def _normalise(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", text.lower())
+
+
+def readme_intro(
+    text: str, *, skip: str | None = None, max_paragraphs: int = 3, max_chars: int = 900
+) -> str | None:
+    """The opening prose of a README: no badges, images, HTML or code, up to the first section.
+
+    ``skip`` is text already shown elsewhere (the GitHub description); a paragraph that
+    merely repeats it is dropped.
+    """
+    skip_key = _normalise(skip) if skip else None
+    text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    text = _HTML_BLOCK.sub("", text)
+    paragraphs: list[str] = []
+    for block in re.split(r"\n\s*\n", text):
+        block = block.strip()
+        if block.startswith("#"):
+            if paragraphs:
+                break  # first section after the intro
+            continue  # the title heading
+        block = _MD_IMAGE.sub("", _HTML_TAG.sub("", block))
+        block = _MD_LINK.sub(r"\1", _MD_EMPTY_LINK.sub("", block))
+        block = " ".join(block.split())
+        if len(block) < 20 or block.startswith(("|", ">", "---")):
+            continue  # badge rows, tables, quotes, rules
+        if skip_key and _normalise(block) == skip_key:
+            continue
+        paragraphs.append(block)
+        if len(paragraphs) >= max_paragraphs or sum(map(len, paragraphs)) >= max_chars:
+            break
+    intro = "\n\n".join(paragraphs)
+    return intro[:max_chars].rstrip() if intro else None
+
+
 def repo_dir(workspace: Path, full_name: str) -> Path:
     owner, name = full_name.split("/", 1)
     return workspace / owner / name
@@ -80,6 +123,7 @@ class ProfilerAgent(Agent):
             if project is None:
                 raise ValueError(f"unknown project id {project_id}")
             full_name, branch = project.full_name, project.default_branch
+            description = project.description
             known_shas = {r.commit_sha for r in project.analysis_runs}
 
         dest = repo_dir(self.settings.workspace_dir, full_name)
@@ -92,7 +136,7 @@ class ProfilerAgent(Agent):
             self.log.info("%s @ %s already profiled; skipping", full_name, sha[:8])
             return None
 
-        profile = await self._build_profile(full_name, branch, sha, dest, gh)
+        profile = await self._build_profile(full_name, branch, sha, dest, gh, description)
 
         with session_scope() as s:
             project = repo.get_project(s, project_id)
@@ -103,7 +147,13 @@ class ProfilerAgent(Agent):
         return profile
 
     async def _build_profile(
-        self, full_name: str, branch: str, sha: str, dest: Path, gh: GitHubClient
+        self,
+        full_name: str,
+        branch: str,
+        sha: str,
+        dest: Path,
+        gh: GitHubClient,
+        description: str | None,
     ) -> RepoProfile:
         go_mod = dest / "go.mod"
         mod = go_tools.parse_go_mod(go_mod.read_text()) if go_mod.exists() else go_tools.GoModInfo()
@@ -150,6 +200,9 @@ class ProfilerAgent(Agent):
             packages=packages,
             has_ci=any((dest / m).exists() for m in CI_MARKERS),
             has_golangci_config=any(dest.glob(".golangci.*")),
+            readme_intro=(
+                readme_intro(texts["README.md"], skip=description) if "README.md" in texts else None
+            ),
             has_contributing=contributing is not None,
             contributing_excerpt=contributing[:6000] if contributing else None,
             ai_policy=policy,

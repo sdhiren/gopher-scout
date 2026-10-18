@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from gopher_scout.agents.profiler import detect_ai_policy
+from gopher_scout.agents.profiler import detect_ai_policy, readme_intro
 from gopher_scout.agents.scout import build_query, selection_score
 from gopher_scout.config import DiscoveryConfig
 from gopher_scout.services.go_tools import collect_metrics, parse_go_mod
@@ -75,3 +75,33 @@ def test_scout_query_and_score() -> None:
     }
     assert selection_score(fresh_mid, cfg, now) > 8.5
     assert selection_score(stale_huge, cfg, now) < selection_score(fresh_mid, cfg, now) / 2
+
+
+def test_readme_intro_skips_badges_html_and_code() -> None:
+    readme = """# Tool
+
+<p align="center"><img src="logo.png"></p>
+
+[![Build](https://ci/badge.svg)](https://ci) [![Go](https://go/badge.svg)](https://go)
+
+`tool` syncs your [dotfiles](https://example.com) across machines without a server.
+
+```sh
+tool sync
+```
+
+It works offline and resolves conflicts interactively, with a dry-run mode for safety.
+
+## Installation
+
+brew install tool
+"""
+    assert readme_intro(readme) == (
+        "`tool` syncs your dotfiles across machines without a server.\n\n"
+        "It works offline and resolves conflicts interactively, with a dry-run mode for safety."
+    )
+    assert readme_intro("# Only a title\n") is None
+    # A paragraph that just repeats the GitHub description is dropped.
+    assert readme_intro(
+        readme, skip="`tool` syncs your dotfiles across machines without a server 🚀"
+    ) == ("It works offline and resolves conflicts interactively, with a dry-run mode for safety.")

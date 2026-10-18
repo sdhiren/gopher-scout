@@ -72,6 +72,7 @@ class RepoProfile(BaseModel):
     packages: list[str] = Field(default_factory=list)
     has_ci: bool = False
     has_golangci_config: bool = False
+    readme_intro: str | None = None
     has_contributing: bool = False
     contributing_excerpt: str | None = None
     ai_policy: str = "none_found"  # none_found | restrictive | permissive

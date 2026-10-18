@@ -135,8 +135,9 @@ def create_app() -> FastAPI:
                 project=project,
                 profile=run.profile if run else None,
                 events=repo.events_for(s, "project", project_id),
-                busy=jobs.busy(project.full_name),
                 P=ProjectStatus,
+                max_ideas=settings.max_ideas_per_project,
+                budget=settings.max_budget_usd_per_run,
             )
 
     @app.get("/jobs", response_class=HTMLResponse)

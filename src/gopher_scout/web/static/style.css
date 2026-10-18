@@ -130,6 +130,16 @@ ul.checks li::before { content: "☐ "; color: var(--muted); }
 .facts dd { margin: 0; }
 
 form.inline { display: inline; }
+a.button { display: inline-block; color: var(--text); text-decoration: none; }
+a.button:hover { border-color: var(--accent); }
+
+.about .lead { font-size: 1.05rem; }
+.about h3 { margin-top: .9rem; }
+.about .actions { margin: .9rem 0; }
+dl.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin: .9rem 0; }
+dl.stats div { background: var(--surface-2); border-radius: 8px; padding: .5rem .7rem; }
+dl.stats dt { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+dl.stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 textarea, input[type=text], input[type=url], select {
   width: 100%; font: inherit; color: var(--text); background: var(--surface);
   border: 1px solid var(--border); border-radius: 8px; padding: .5rem .6rem;

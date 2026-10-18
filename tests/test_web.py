@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import asyncio
+import time
+
+import pytest
 from fastapi.testclient import TestClient
 
 from gopher_scout.config import Settings
 from gopher_scout.db import repository as repo
 from gopher_scout.db.session import session_scope
 from gopher_scout.domain.enums import IdeaStatus
+from gopher_scout.orchestrator.pipeline import Pipeline
 from gopher_scout.web.app import create_app
 
 
@@ -51,3 +56,28 @@ def test_invalid_decision_is_rejected(settings: Settings, seeded: tuple[int, int
     resp = client.post(f"/ideas/{idea_id}/decision", data={"decision": "merged"})
     assert resp.status_code == 400
     assert client.get("/ideas/999").status_code == 404
+
+
+def test_stage_buttons_run_jobs_and_ignore_double_clicks(
+    settings: Settings, seeded: tuple[int, int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+
+    async def fake_discover(self: Pipeline) -> str:
+        calls.append("discover")
+        await asyncio.sleep(0.3)
+        return "10 matched"
+
+    monkeypatch.setattr(Pipeline, "discover", fake_discover)
+    with TestClient(create_app()) as client:
+        for _ in range(2):  # second click lands while the first job is still running
+            resp = client.post("/actions/discover", follow_redirects=False)
+            assert resp.status_code == 303
+            assert resp.headers["location"] == "/jobs"
+        assert "Discover…" in client.get("/").text  # button shows it is running
+        deadline = time.monotonic() + 5
+        while "badge done" not in client.get("/jobs").text:
+            assert time.monotonic() < deadline, "job never finished"
+            time.sleep(0.05)
+    assert calls == ["discover"]
+    assert "10 matched" in client.get("/jobs").text

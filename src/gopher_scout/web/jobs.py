@@ -46,7 +46,6 @@ class JobManager:
         if self.busy(key):
             raise RuntimeError(f"a job for {key} is already running")
         job = Job(id=next(self._ids), label=label, key=key)
-        self._jobs[job.id] = job
 
         async def runner() -> None:
             try:
@@ -58,7 +57,8 @@ class JobManager:
             finally:
                 job.finished_at = datetime.now(UTC)
 
-        task = asyncio.create_task(runner())
+        task = asyncio.create_task(runner())  # raises outside an event loop -> nothing registered
+        self._jobs[job.id] = job
         self._tasks.add(task)  # keep a reference so the task is not garbage-collected
         task.add_done_callback(self._tasks.discard)
         self._trim()

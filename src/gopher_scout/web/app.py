@@ -158,21 +158,21 @@ def create_app() -> FastAPI:
             raise HTTPException(400, str(exc)) from exc
         return back(f"/ideas/{idea_id}")
 
+    # Job-starting endpoints must be async: they schedule tasks on the server's event loop.
     @app.post("/ideas/{idea_id}/implement")
-    def implement(idea_id: int) -> RedirectResponse:
+    async def implement(idea_id: int) -> RedirectResponse:
         with session_scope() as s:
             idea = repo.get_idea(s, idea_id)
             if idea is None:
                 raise HTTPException(404)
             key, title = idea.project.full_name, idea.title
-        try:
+        # Already running (double click, re-submitted form): just show progress.
+        if not jobs.busy(key):
             jobs.submit(f"Implement #{idea_id}: {title}", key, lambda: pipeline.implement(idea_id))
-        except RuntimeError as exc:
-            raise HTTPException(409, str(exc)) from exc
-        return back(f"/ideas/{idea_id}")
+        return back("/jobs")
 
     @app.post("/actions/{stage}")
-    def run_stage(stage: str, project_id: int | None = Form(None)) -> RedirectResponse:
+    async def run_stage(stage: str, project_id: int | None = Form(None)) -> RedirectResponse:
         ids = [project_id] if project_id else None
         stages = {
             "discover": ("Discover repositories", lambda: pipeline.discover()),
@@ -183,10 +183,9 @@ def create_app() -> FastAPI:
         if stage not in stages:
             raise HTTPException(404)
         label, factory = stages[stage]
-        try:
+        # Already running (double click, re-submitted form): just show progress.
+        if not jobs.busy(f"stage:{stage}"):
             jobs.submit(label, f"stage:{stage}", factory)
-        except RuntimeError as exc:
-            raise HTTPException(409, str(exc)) from exc
-        return back(f"/projects/{project_id}" if project_id else "/jobs")
+        return back("/jobs")
 
     return app

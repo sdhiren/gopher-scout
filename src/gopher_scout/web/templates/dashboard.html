@@ -8,7 +8,8 @@
   </div>
   <div class="actions">
     {% for stage, label in [('discover','Discover'),('profile','Profile next 5'),('analyse','Analyse next 3'),('critique','Critique proposed')] %}
-    <form class="inline" method="post" action="/actions/{{ stage }}"><button>{{ label }}</button></form>
+    {% set running = jobs.busy('stage:' ~ stage) %}
+    <form class="inline" method="post" action="/actions/{{ stage }}"><button {{ 'disabled' if running }} title="{{ 'Running — see Jobs' if running else '' }}">{{ label }}{{ '…' if running }}</button></form>
     {% endfor %}
   </div>
 </div>
